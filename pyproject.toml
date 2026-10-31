@@ -1,0 +1,57 @@
+# apkforge packaging.
+#
+# This file sits at the repository root, beside apkforge/ (the package), tests/ and __main__.py (the entry point of the release .pyz).
+# It adds `pip install` and `uvx` support. It changes nothing about the release .pyz:
+# tools/build_pyz.py still packs only __main__.py and the files of apkforge/.
+
+[build-system]
+requires = ["setuptools>=77"]      # 77 is the first release with PEP 639 license expressions and license-files
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "apkforge"
+# util.VERSION ("1.3.0") + util.BUILD ("" for a release, "rc1", "dev9", ...) in PEP 440 spelling. tests/test_packaging.py fails when the two drift apart.
+version = "1.3.0"
+description = "Gradle-free Android build system: aapt2, javac/kotlinc, D8/R8 and a pure-Python APK and AAB signer"
+readme = "README.md"
+authors = [{ name = "Gnana Sagar" }]
+requires-python = ">=3.9"   # the tests that need no toolchain pass from the installed wheel on 3.9 to 3.14
+dependencies = []   # Python standard library only. Keep it that way.
+# A license expression replaces the old "License ::" classifier: do not add both, setuptools refuses.
+license = "Apache-2.0"
+license-files = ["LICENSE", "NOTICE"]
+keywords = [
+    "android", "apk", "aab", "app-bundle", "build-tool", "gradle-alternative",
+    "aapt2", "d8", "r8", "kotlin", "apk-signing", "react-native",
+]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Environment :: Console",
+    "Intended Audience :: Developers",
+    "Operating System :: POSIX :: Linux",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3 :: Only",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
+    "Topic :: Software Development :: Build Tools",
+]
+
+[project.urls]
+Homepage = "https://github.com/invarq/apkforge"
+Source = "https://github.com/invarq/apkforge"
+Issues = "https://github.com/invarq/apkforge/issues"
+Changelog = "https://github.com/invarq/apkforge/blob/main/CHANGELOG.md"
+
+[project.scripts]
+apkforge = "apkforge.cli:main"
+
+[tool.setuptools.packages.find]
+include = ["apkforge", "apkforge.*"]
+
+[tool.setuptools.package-data]
+# SHA-256 pins of the downloaded tools. Without this file the toolchain falls back to trust-on-first-use without saying so.
+apkforge = ["pins.json"]

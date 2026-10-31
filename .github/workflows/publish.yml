@@ -1,0 +1,138 @@
+# Build, test and publish apkforge.
+#
+#   Push a tag such as v1.3.0   build, test, publish to PyPI (Trusted Publishing: no token is stored anywhere), then attach the wheel,
+#                               the sdist, the single-file .pyz and SHA256SUMS to a GitHub release.
+#   Run it by hand              Actions tab -> publish -> Run workflow: build, test, publish to TestPyPI (a dry run).
+#
+# One-time setup
+#   PyPI      Account settings -> Publishing -> add a pending publisher: owner invarq, repository apkforge, workflow publish.yml,
+#             environment pypi, project apkforge.  The first successful run of this workflow creates the project.
+#   TestPyPI  The same on test.pypi.org (a separate account), with environment testpypi.
+#   GitHub    Settings -> Environments: create "pypi" (add yourself as a required reviewer, so a stray tag cannot publish) and "testpypi".
+#
+# The actions are pinned to commit SHAs (the version is in the comment); update them on purpose, not by accident.
+
+name: publish
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97  # v7.0.0
+        with:
+          python-version: "3.12"
+      - name: The tag must name the version in pyproject.toml
+        if: startsWith(github.ref, 'refs/tags/')
+        run: |
+          version="$(sed -n 's/^version *= *"\([^"]*\)".*/\1/p' pyproject.toml | head -n 1)"
+          if [ "v$version" != "$GITHUB_REF_NAME" ]; then
+            echo "tag $GITHUB_REF_NAME does not match version $version in pyproject.toml" >&2
+            exit 1
+          fi
+      - name: Build the wheel and the sdist
+        run: |
+          export SOURCE_DATE_EPOCH="$(git log -1 --format=%ct)"
+          python -m pip install "build==1.6.1" "twine==7.0.0"
+          python -m build --outdir dist
+          python -m twine check --strict dist/*
+      - name: Build the single-file .pyz and the checksums
+        run: |
+          version="$(sed -n 's/^version *= *"\([^"]*\)".*/\1/p' pyproject.toml | head -n 1)"
+          mkdir release
+          cp dist/* release/
+          python tools/build_pyz.py . "release/apkforge-$version.pyz"
+          python "release/apkforge-$version.pyz" --version
+          (cd release && sha256sum apkforge-* > SHA256SUMS && cat SHA256SUMS)
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9  # v7.0.2
+        with:
+          name: python-dist
+          path: dist/
+          if-no-files-found: error
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9  # v7.0.2
+        with:
+          name: release-assets
+          path: release/
+          if-no-files-found: error
+
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.9", "3.10", "3.11", "3.12", "3.13", "3.14"]
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97  # v7.0.0
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: The offline tests (the demo-app tests skip themselves because no toolchain is installed)
+        run: python -m unittest discover -s tests -v
+
+  publish-testpypi:
+    if: github.event_name == 'workflow_dispatch'
+    needs: [build, test]
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    environment: testpypi
+    permissions:
+      id-token: write
+    steps:
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333  # v8.0.2
+        with:
+          name: python-dist
+          path: dist/
+      - uses: pypa/gh-action-pypi-publish@dc37677b2e1c63e2034f94d8a5b11f265b73ba33  # v1.14.2
+        with:
+          repository-url: https://test.pypi.org/legacy/
+          skip-existing: true
+
+  publish-pypi:
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: [build, test]
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    environment: pypi
+    permissions:
+      id-token: write
+    steps:
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333  # v8.0.2
+        with:
+          name: python-dist
+          path: dist/
+      - uses: pypa/gh-action-pypi-publish@dc37677b2e1c63e2034f94d8a5b11f265b73ba33  # v1.14.2
+
+  github-release:
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: publish-pypi
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333  # v8.0.2
+        with:
+          name: release-assets
+          path: release/
+      - name: Create the release with the wheel, sdist, .pyz and SHA256SUMS
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "$GITHUB_REF_NAME" release/* \
+            --repo "$GITHUB_REPOSITORY" \
+            --title "apkforge ${GITHUB_REF_NAME#v}" \
+            --notes "See CHANGELOG.md. Check a download with: sha256sum -c SHA256SUMS"
