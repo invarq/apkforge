@@ -14,7 +14,7 @@ import struct
 import tempfile
 import zipfile
 
-from . import aab as aabmod, apiguard, arsc, classfile, deps, elfcheck, native, react, resopt, signing, toolchain, util, viewbinding, zipw
+from . import aab as aabmod, apiguard, arsc, classfile, deps, elfcheck, gms, native, react, resopt, signing, toolchain, util, viewbinding, zipw
 from . import manifest as M
 from .project import topo
 from .util import ForgeError, detail, info, ok, run, stage, warn
@@ -214,6 +214,8 @@ class Prep:
     features = {}                         # {"compose": bool, "serialization": bool, "parcelize": bool}: the Kotlin compiler plugins this module compiles with
     js = None                             # the JavaScript bundle of a React Native app (Builder.react_bundle): {"plan", "meta", "assets", "res", ...}; None for every other module
     native = None                         # what native.build() made for the module (Builder.native_build): {"dir", "libs", ...}; None for a module without a "native" setting
+    gms = None                            # gms.GoogleServices when the app processes google-services.json (Builder.google_services); None for every other module
+    crashlytics = None                    # {"id", "app_id", ...}: the Crashlytics mapping id of this build (Builder.crashlytics_plan); None unless it is a release build with R8 and Crashlytics on
 
 
 class _Incomplete(Exception):
@@ -1017,6 +1019,69 @@ class Builder:
                 run([aapt2, "compile", "--dir", rel, "-o", a.path("res.zip")], cwd=base, what="aapt2 compile (%s)" % label)
         return a.path("res.zip")
 
+    def generated_files(self, m, pre):
+        """The resources apkforge writes itself, as {path inside the generated res folder: text}: what "resValues" become, the strings of google-services.json and the Crashlytics
+        mapping id.  A name that apkforge.json sets in "resValues" is the person's own and wins over the one google-services.json would make (aapt2 refuses a name twice)."""
+        files = {}
+        vals = gen_res_values(m)
+        if vals:
+            files["values/generated.xml"] = vals
+        g = getattr(pre, "gms", None)
+        if g:
+            own = set(m.resValues)
+            files.update(g.files(skip=own))
+        c = getattr(pre, "crashlytics", None)
+        if c:
+            files["values/crashlytics_mapping_id.xml"] = gms.mapping_xml(c["id"])
+        return files
+
+    def google_services(self, m, pre, appid):
+        """pre.gms: the strings of google-services.json, for an app module that processes the file (apkforge.json "googleServices": true, or "auto" with the file present and a
+        Firebase or Play services dependency).  The file is searched for as Google's plugin does it (gms.json_locations); the client in it is the one whose package is the applicationId."""
+        pre.gms = None
+        names = {a.name for a in pre.runtime}
+        path, searched = gms.find_json(m.dir, self.variant)
+        shown = ", ".join(os.path.relpath(c, m.dir).replace(os.sep, "/") for c in searched)
+        if not gms.wanted(m.googleServices, path is not None, names):
+            if path and m.googleServices in (None, "auto"):
+                info("%s: %s is there, but nothing here depends on Firebase or Play services, so it is not processed (\"googleServices\": true processes it anyway)"
+                     % (m.name, os.path.relpath(path, m.dir)))
+            elif path is None and m.googleServices in (None, "auto") and gms.uses_firebase(names):
+                warn("%s: depends on Firebase and has no google-services.json (looked for: %s): FirebaseApp.initializeApp() fails at run time unless the code passes its own "
+                     "FirebaseOptions.  Add the file, or set \"googleServices\": false when that is on purpose" % (m.name, shown))
+            return
+        if path is None:
+            raise ForgeError("%s: \"googleServices\" is true and there is no google-services.json (looked for: %s)" % (m.name, shown))
+        pre.gms = gms.parse(path, appid)
+        for w in pre.gms.warnings:
+            warn("%s: %s: %s" % (m.name, os.path.relpath(path, m.dir), w))
+        info("%s: %s -> %d string resources for %s (Firebase app id %s)" % (m.name, os.path.relpath(path, m.dir), len(pre.gms.values), appid, pre.gms.app_id))
+
+    def crashlytics_plan(self, m, pre, appid):
+        """pre.crashlytics: the id that ties a crash to its R8 mapping.  Only a release build with R8 has a mapping, so only that build gets an id.  The id is a hash of everything
+        that decides what R8 sees (sources, resources, manifest, configuration, the dependencies as built, the tools), so the same inputs give the same id and the build stays
+        reproducible; it cannot come from the mapping itself, because the resources are linked before R8 runs."""
+        pre.crashlytics = None
+        names = {a.name for a in pre.runtime}
+        if not gms.crashlytics_wanted(m.crashlytics, names):
+            return
+        if gms.MAPPING_ID_NAME in m.resValues:
+            info("%s: \"resValues\" sets %s itself: apkforge makes no Crashlytics mapping id" % (m.name, gms.MAPPING_ID_NAME))
+            return
+        if not (self.release and m.minify):
+            (info if m.crashlytics is True else detail)("%s: Crashlytics: no R8 mapping in this build (a release build with \"minify\" has one), so it gets no mapping id" % m.name)
+            return
+        rules = [util.sha256_file(os.path.join(m.dir, f)) for f in m.cfg.get("proguardFiles", []) if os.path.isfile(os.path.join(m.dir, f))]
+        cfg = {k: v for k, v in m.cfg.items() if k not in ("signing", "uploadSigning")}        # keys and passwords do not change what R8 sees; rotating a key must not change the id
+        inputs = {"applicationId": appid, "versionCode": m.versionCode, "versionName": m.versionName, "variant": self.variant, "cfg": cfg,
+                  "src": util.tree_hash(m.src_dirs, (".java", ".kt")), "res": util.tree_hash(m.res_dirs), "manifest": util.sha256_file(m.manifest) if m.manifest else None,
+                  "deps": [a.fingerprint() for a in pre.runtime], "co": [a.fingerprint() for a in pre.compile_only],        # "co" is R8's --classpath, as in the key of dex()
+                  "rules": rules, "r8": self.tc.ident("dexer"), "javac": self.tc.ident("javac"),
+                  "kotlinc": self.tc.ident("kotlinc") if m.uses_kotlin else None}
+        mid = gms.mapping_id(inputs)
+        pre.crashlytics = {"id": mid, "app_id": pre.gms.app_id if pre.gms else None, "application_id": appid, "version_name": str(m.versionName), "version_code": int(m.versionCode)}
+        info("%s: Crashlytics mapping id %s (from this build's inputs); `apkforge crashlytics-upload` sends the R8 mapping under it" % (m.name, mid))
+
     def overlay_zips(self, m, pre, arts, work, final):
         """The compiled resource overlays of one aapt2 link, in the order of its -R flags (a later one wins): the resources of every library in `arts` (lowest priority first), a React Native app's Metro
         drawables, the module's own res folders, and last the folder that `resValues` become (written to work/gen_res). The APK link and the bundle link both take this list: they used to build it twice,
@@ -1027,13 +1092,16 @@ class Builder:
                 z = self.compile_res(rd, a.label + ":" + os.path.basename(os.path.dirname(rd) or rd))
                 if z:
                     overlays.append(z)
-        gen_vals = gen_res_values(m)
         gen_res = None
-        if gen_vals:
+        files = self.generated_files(m, pre)
+        if files:
             gen_res = os.path.join(work, "gen_res")
-            os.makedirs(os.path.join(gen_res, "values"), exist_ok=True)
-            with open(os.path.join(gen_res, "values", "generated.xml"), "w") as f:
-                f.write(gen_vals)
+            shutil.rmtree(gen_res, ignore_errors=True)                # a file of an earlier build (google-services.json that is no longer processed) must not be compiled again
+            for rel, text in files.items():
+                dst = os.path.join(gen_res, *rel.split("/"))
+                os.makedirs(os.path.dirname(dst), exist_ok=True)
+                with open(dst, "w", encoding="utf-8", newline="\n") as f:        # utf-8 whatever the locale says: the XML declares it
+                    f.write(text)
         js = getattr(pre, "js", None) if final else None
         if js and os.path.isdir(js["res"]):               # Metro's drawables and raw files: below the module's own resources, as for the plugin's generated res folder
             z = self.compile_res(js["res"], "%s:%s:react-res" % (m.name, self.variant))
@@ -1361,6 +1429,8 @@ class Builder:
             raise ForgeError("%s: set \"namespace\" (or \"applicationId\") in apkforge.json" % m.name)
         appid = m.application_id or ns
         work = self.work(m)
+        self.google_services(m, pre, appid)                        # the strings of google-services.json and the Crashlytics mapping id are resources: both before the link
+        self.crashlytics_plan(m, pre, appid)
         pre.js = self.react_bundle(m, pre, appid)                  # Metro + hermesc (React Native modules only); before the link, which takes its assets and resources
         mtext, mroot = self.make_manifest(m, pre, ns, appid)
         r = self.link_resources(m, pre, ns, appid, mtext, work, final=True)
@@ -1691,7 +1761,13 @@ class Builder:
         if minify:
             md = os.path.join(self.p.root, "build", "outputs", "mapping")
             os.makedirs(md, exist_ok=True)
-            shutil.copyfile(a.path("mapping.txt"), os.path.join(md, "%s-mapping.txt" % m.name.lstrip(":")))
+            stem = m.name.lstrip(":")
+            shutil.copyfile(a.path("mapping.txt"), os.path.join(md, "%s-mapping.txt" % stem))
+            c = getattr(pre, "crashlytics", None)
+            if c:
+                gms.write_outputs(md, stem, c["id"], c["app_id"], c["application_id"], c["version_name"], c["version_code"])
+            else:
+                gms.remove_outputs(md, stem)                          # this mapping replaced the one an earlier record described: that record must not pair with it
         return a.path("dex")
 
     # ------------------------------------------------------------------------------------------------------ package

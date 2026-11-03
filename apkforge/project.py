@@ -22,6 +22,9 @@ DEFAULTS = {
     # Kotlin compiler plugins / code generators.  None = automatic (compose: androidx.compose.runtime on the classpath; serialization: kotlinx-serialization-core
     # on the classpath; parcelize: kotlinx.parcelize used in the sources); true / false forces it.
     "compose": None, "serialization": None, "parcelize": None, "viewBinding": False, "kaptArgs": {}, "kspArgs": {},
+    # google-services.json -> string resources (what Google's Gradle plugin does) and Crashlytics' mapping id (see gms.py).  None / "auto" = by what the module has (the file and a Firebase or Play
+    # services dependency; a firebase-crashlytics dependency); true / false forces it.
+    "googleServices": None, "crashlytics": None,
 }
 
 
@@ -66,6 +69,9 @@ class Module:
                     name, key, ", ".join('"%s"' % v for v in allowed[:-1]) + ' or "%s"' % allowed[-1], json.dumps(c[key])))
         if not isinstance(c["v4Signing"], bool):                  # the string "false" is not empty, so it would switch v4 ON
             raise ForgeError('apkforge.json (module %s): "v4Signing" must be true or false, not %s' % (name, json.dumps(c["v4Signing"])))
+        for key in ("googleServices", "crashlytics"):
+            if not (c[key] is None or isinstance(c[key], bool) or c[key] == "auto"):       # the string "false" is not empty, so it would switch the feature ON
+                raise ForgeError('apkforge.json (module %s): "%s" must be true, false or "auto", not %s' % (name, key, json.dumps(c[key])))
         if not isinstance(c["compactEntries"], bool):
             raise ForgeError('apkforge.json (module %s): "compactEntries" must be true or false, not %s' % (name, json.dumps(c["compactEntries"])))
         check_upload_signing(name, c.get("uploadSigning"))                                                      # same: not after the whole build

@@ -37,11 +37,30 @@ JDK it downloaded itself (`~/.apkforge/toolchain/jdk`). When there is none it do
 App Bundles. Builds fetch the android.jar of the project's `compileSdk` as well. Everything lives in `~/.apkforge` (set `APKFORGE_HOME` to move it). A download is checked
 against the SHA-256 pins in `pins.json` or the checksum its publisher ships, and is otherwise recorded on first use; `--offline` forbids downloads.
 
+## Firebase: `google-services.json` and Crashlytics
+
+Google's Gradle plugin turns `google-services.json` into string resources that the Firebase and Play services SDKs look up by name. apkforge does that step itself, for the APK
+and for the App Bundle. Two settings in `apkforge.json` (each `true`, `false` or `"auto"`, the default):
+
+- `"googleServices"`: with `"auto"` it is on when the file is found and the module depends on a `com.google.firebase:` or `com.google.android.gms:` artifact. The file without such a
+  dependency is only mentioned; a Firebase dependency without the file is a warning that lists where apkforge looked. `true` without the file is an error.
+- `"crashlytics"`: with `"auto"` it is on when the module depends on `firebase-crashlytics`.
+
+The file is searched as Google's plugin searches it, most specific first: `src/<buildType>/google-services.json`, `src/`, then the module directory. The `client` entry used is the one
+whose `package_name` is the module's `applicationId`; if none matches, the error lists the ones in the file. A `resValues` entry with the same name wins over the file.
+
+Crashlytics finds the R8 mapping of a crash by one string resource, the mapping id. A release build with `"minify"` gets one: a hash of the build's inputs, so a rebuild of the same
+code has the same id, and rotating the signing key does not change it. The build writes `build/outputs/mapping/<module>-mapping.txt`, `<module>-crashlytics.xml` (the resource that
+carries the id) and `<module>-crashlytics.json`. `apkforge crashlytics-upload myapp` hands them to `firebase crashlytics:mappingfile:upload`; it needs the Firebase CLI and a login
+(`firebase login`, or `FIREBASE_TOKEN` in CI), and apkforge never sees a credential. `--dry-run` prints the command.
+
+The resource rules and the search order come from Google's plugin source, and the Firebase CLI's arguments from its source. Not tried: the upload against the real Crashlytics
+backend, and a build against Google's own Firebase artifacts (the tests use stand-in jars).
+
 ## What does not work yet
 
 - Hilt: its Gradle plugin rewrites the base class of `@AndroidEntryPoint` classes in bytecode, and apkforge has no such step.
 - Product flavors and flavor dimensions.
-- `google-services.json` processing and Crashlytics build steps.
 - RenderScript.
 - ECDSA signing keys (RSA only).
 
@@ -50,7 +69,7 @@ accepts a bundle (`docs/design/D2-aab-change-note.md`). apkforge is developed an
 
 ## Development
 
-    python3 -m unittest discover -s tests           # under a minute with the toolchain installed
+    python3 -m unittest discover -s tests           # about a minute and a half with the toolchain installed (most of it is the demo builds)
 
 The tests that build demo apps skip themselves until the toolchain is there: run `apkforge doctor --bundletool`, then build any app once (`apkforge new /tmp/demo`,
 `apkforge build /tmp/demo`) so that the API 36 android.jar is downloaded.

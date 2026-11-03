@@ -2,10 +2,28 @@
 
 ## Unreleased
 
+### Added
+- **`google-services.json` is processed.** apkforge reads the file the way Google's Gradle plugin does (searched in `src/<buildType>/`, `src/` and the module directory; the `client`
+  entry of the module's `applicationId`; a service counts only at status 2) and writes the string resources that the Firebase and Play services SDKs look up by name
+  (`google_app_id`, `google_api_key`, `gcm_defaultSenderId`, ..., and `xml/global_tracker.xml`) into the APK and into the bundle. Two new module settings, `"googleServices"`
+  and `"crashlytics"`, each `true`, `false` or `"auto"` (the default: on when the file is there and the module depends on a Firebase or Play services artifact, or on
+  `firebase-crashlytics`). A `resValues` entry beats the same name from the file. Without the file, a Firebase dependency only produces a warning that says where apkforge looked.
+- **A Crashlytics mapping id.** A release build with `"minify"` and Crashlytics on gets the `com.google.firebase.crashlytics.mapping_file_id` resource: a hash of the build's
+  inputs (not of the signing key), so a rebuild of the same code has the same id. `build/outputs/mapping/` now holds `<module>-mapping.txt`, `<module>-crashlytics.xml` (the
+  resource that carries the id) and `<module>-crashlytics.json` (a small record for the upload).
+- **`apkforge crashlytics-upload`** sends that mapping with the Firebase CLI (`firebase crashlytics:mappingfile:upload --app --resource-file`); `--dry-run` prints the command,
+  `--app`, `--module` and `--firebase` override what it finds. apkforge never sees a credential: the Firebase CLI holds the login.
+- `tests/test_gms.py`: 79 tests for the above, three of them real builds (an APK and a bundle read back with aapt2) against stand-in Firebase jars in a local repository.
+
+### Changed
+- `apkforge import-gradle` maps `com.google.gms.google-services` and `com.google.firebase.crashlytics` onto the two new settings instead of reporting them as not supported.
+
 ### Fixed
 - **`resValues` reach the Android App Bundle.** Before, `apkforge build --aab` linked the bundle without the generated `gen_res` folder that `resValues` become, so a resource
   made by `resValues` was in the APK and missing from the bundle that Google Play ships. The APK link and the bundle link now take one overlay list (`Builder.overlay_zips()`),
   so they cannot drift apart again.
+- **Generated resources are written as UTF-8.** `values/generated.xml` was written in Python's default encoding, so a non-ASCII `resValues` value stopped the build with a
+  `UnicodeEncodeError` wherever that encoding is not UTF-8 (`LC_ALL=C`, some CI images).
 
 ## 1.3.0 - 2026-10-31
 

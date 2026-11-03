@@ -2,6 +2,7 @@
 import argparse
 import json
 import os
+import shlex
 import sys
 import time
 import zipfile
@@ -409,6 +410,28 @@ def _import_summary(out, verbose):
     return line
 
 
+def cmd_crashlytics_upload(a):
+    """Send the R8 mapping of the last release build to Firebase Crashlytics, under the mapping id that build carries.  It reads build/outputs/mapping/ (the mapping, the resource file with the
+    id and the record apkforge wrote there) and runs the Firebase CLI's own `crashlytics:mappingfile:upload`: nothing is rebuilt and apkforge never sees a credential."""
+    from . import gms
+    proj = project.load(a.path)
+    util.set_log(os.path.join(proj.root, ".apkforge", "build.log"), verbose=a.verbose)
+    rec = gms.read_outputs(os.path.join(proj.root, "build", "outputs", "mapping"), a.module)
+    app_id = a.app or rec.get("firebaseAppId")
+    if not app_id:
+        raise ForgeError("the Firebase app id (1:<number>:android:<hash>) is not known: the build did not read a google-services.json.  Pass it with --app (Firebase console > project settings)")
+    cmd = gms.upload_command(a.firebase or "firebase", rec, app_id)
+    rel = lambda p: os.path.relpath(p, proj.root).replace(os.sep, "/")          # noqa: E731
+    info("mapping %s, mapping id %s, %s %s (%s)" % (rel(os.path.join(rec["dir"], rec["mappingFile"])), rec["mappingId"], rec.get("applicationId", "?"), rec.get("versionName", "?"), app_id))
+    if a.dry_run:
+        print(shlex.join(cmd))
+        return 0
+    cmd[0] = gms.find_firebase(a.firebase)
+    util.run(cmd, what="firebase crashlytics:mappingfile:upload", cwd=proj.root)
+    ok("uploaded the mapping of %s %s to Crashlytics under the mapping id %s" % (rec.get("applicationId", "?"), rec.get("versionName", "?"), rec["mappingId"]))
+    return 0
+
+
 def cmd_import_gradle(a):
     from . import gradle_import
     util.log_to_stderr()                      # stdout is the JSON config and nothing else
@@ -439,6 +462,7 @@ QUICKSTART = """quick start:
   apkforge build myapp --release --aab             also an Android App Bundle: signed, checked, and what Google Play will object to is printed
   apkforge verify myapp/build/outputs/*.aab        the same kind of check for a bundle; --play makes what Google Play objects to a failure
   apkforge test-bundle myapp [--install]           bundletool's universal APK of the bundle, signed and checked; --install runs it on a device
+  apkforge crashlytics-upload myapp                send the R8 mapping of the last release build to Crashlytics (Firebase CLI); --dry-run prints the command
   apkforge doctor [--allow-apt]                    provision / check the toolchain; --allow-apt also installs apksigner, zipalign, dexdump so
                                                    that signature and alignment claims are [confirmed] by Google's tools, not [internal only]
 """
@@ -582,6 +606,19 @@ def main(argv=None):
     p.add_argument("--logcat", action="store_true", help="with --install: after the start, follow logcat for the app's process until Ctrl-C")
     p.add_argument("--json", action="store_true", help="print the result as JSON")
     p.set_defaults(fn=cmd_test_bundle)
+
+    p = sub.add_parser("crashlytics-upload", help="send the R8 mapping of the last release build to Firebase Crashlytics (needs the Firebase CLI)",
+                       epilog="A release build with \"minify\" and Crashlytics on (a firebase-crashlytics dependency, or \"crashlytics\": true) puts a mapping id into the app and writes the mapping, the resource "
+                              "file that holds the id and a small record into build/outputs/mapping/.  This command uploads that mapping with `firebase crashlytics:mappingfile:upload`, which needs the "
+                              "Firebase CLI (npm install -g firebase-tools) and a login (firebase login; in CI FIREBASE_TOKEN or GOOGLE_APPLICATION_CREDENTIALS).  The Firebase app id comes from the "
+                              "google-services.json the build read; --app overrides it.  --dry-run prints the command and runs nothing.")
+    p.add_argument("path", nargs="?", default=".", help="project directory (default: .)")
+    p.add_argument("-v", "--verbose", action="store_true", help="show the Firebase CLI's command line and output")
+    p.add_argument("--module", "-m", help="the module whose mapping to send (e.g. :app); needed only when several modules have one")
+    p.add_argument("--app", metavar="FIREBASE_APP_ID", help="Firebase app id, 1:<project number>:android:<hash> (default: the one in the build's google-services.json)")
+    p.add_argument("--firebase", metavar="PATH", help="the Firebase CLI (default: `firebase` on the PATH)")
+    p.add_argument("--dry-run", action="store_true", help="print the command, run nothing")
+    p.set_defaults(fn=cmd_crashlytics_upload)
 
     p = sub.add_parser("import-gradle", help="write apkforge.json from an existing Gradle project (no Gradle needed)")
     p.add_argument("path", nargs="?", default=".")

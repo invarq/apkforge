@@ -796,6 +796,7 @@ PLUGIN_MAPPED = {
     "kotlin-kapt": None, "org.jetbrains.kotlin.kapt": None, "com.google.devtools.ksp": None,
     "org.jetbrains.kotlin.plugin.compose": "compose", "org.jetbrains.kotlin.plugin.serialization": "serialization", "kotlinx-serialization": "serialization",
     "kotlin-parcelize": "parcelize", "org.jetbrains.kotlin.plugin.parcelize": "parcelize",
+    "com.google.gms.google-services": "googleServices", "com.google.firebase.crashlytics": "crashlytics",          # gms.py: google-services.json as string resources, and the Crashlytics mapping id
 }
 HILT_WHY = ("Hilt's Gradle plugin rewrites the base class of @AndroidEntryPoint classes in bytecode and apkforge has no such step "
             "(hilt-compiler itself runs on kapt / ksp)")
@@ -803,7 +804,6 @@ PLUGIN_UNSUPPORTED = {
     "org.jetbrains.compose": "Compose Multiplatform is not supported", "kotlin-android-extensions": "Kotlin synthetics need a compiler plugin",
     "dagger.hilt.android.plugin": HILT_WHY, "com.google.dagger.hilt.android": HILT_WHY,
     "androidx.navigation.safeargs": "Safe Args generates classes", "androidx.navigation.safeargs.kotlin": "Safe Args generates classes",
-    "com.google.gms.google-services": "google-services.json processing is not supported", "com.google.firebase.crashlytics": "Crashlytics build steps are not supported",
     "com.android.dynamic-feature": "dynamic feature modules are not supported", "com.android.test": "test modules are not supported",
     "org.jetbrains.kotlin.plugin.allopen": "Kotlin compiler plugin", "org.jetbrains.kotlin.plugin.noarg": "Kotlin compiler plugin",
     "org.jetbrains.kotlin.plugin.jpa": "Kotlin compiler plugin", "kotlin-allopen": "Kotlin compiler plugin", "kotlin-noarg": "Kotlin compiler plugin",
