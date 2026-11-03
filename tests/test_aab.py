@@ -670,6 +670,29 @@ class DemoBundleTests(unittest.TestCase):
         self.assertEqual(self.external(res["aab"]), (0, 0))
         self.assertEqual(run_cli("verify", res["apk"])[0], 0)
 
+    def test_res_values_are_in_the_bundle_as_in_the_apk(self):
+        """resValues become a generated res folder. The APK link took it and the bundle link did not, so the bundle lacked what the APK had"""
+        proj = os.path.join(self.tmp, "resvalues")
+        with quiet():
+            templates.create(proj, "java", None, "com.acme.resvalues")
+        path = os.path.join(proj, "apkforge.json")
+        with open(path, encoding="utf-8") as f:
+            cfg = json.load(f)
+        cfg["resValues"] = {"gen_marker": "from-res-values-7f3a", "gen_flag": {"type": "bool", "value": "true"}}
+        with open(path, "w", encoding="utf-8") as f:
+            json.dump(cfg, f)
+        rc, out, err = run_cli("build", proj, "--aab", "--json")
+        self.assertEqual(rc, 0, err[-1500:])
+        res = json.loads(out)
+        rc, dump = util.run([self.tc.aapt2(), "dump", "resources", res["apk"]], check=False)
+        self.assertEqual(rc, 0)
+        with zipfile.ZipFile(res["aab"]) as z:
+            table = z.read("base/resources.pb")                                          # the bundle's resource table: entry names and string values are plain UTF-8 in it
+        for name, in_apk in (("gen_marker", "string/gen_marker"), ("gen_flag", "bool/gen_flag")):
+            self.assertIn(in_apk, dump)                                                  # the APK had them all along
+            self.assertIn(name.encode(), table, "%s is in the APK and missing from the bundle" % name)
+        self.assertIn(b"from-res-values-7f3a", table)
+
     def test_test_bundle(self):
         rc, out, err = run_cli("test-bundle", self.proj, "--json")
         self.assertEqual(rc, 0, err[-1500:])

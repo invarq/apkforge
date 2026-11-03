@@ -1,5 +1,12 @@
 # Changelog
 
+## Unreleased
+
+### Fixed
+- **`resValues` reach the Android App Bundle.** Before, `apkforge build --aab` linked the bundle without the generated `gen_res` folder that `resValues` become, so a resource
+  made by `resValues` was in the APK and missing from the bundle that Google Play ships. The APK link and the bundle link now take one overlay list (`Builder.overlay_zips()`),
+  so they cannot drift apart again.
+
 ## 1.3.0 - 2026-10-31
 
 The first packaged release. It replaces the 1.2.0 dev9 pre-release and includes everything in it.

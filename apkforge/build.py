@@ -1017,13 +1017,10 @@ class Builder:
                 run([aapt2, "compile", "--dir", rel, "-o", a.path("res.zip")], cwd=base, what="aapt2 compile (%s)" % label)
         return a.path("res.zip")
 
-    def link_resources(self, m, pre, ns, appid, manifest_text, work, final):
-        """final=True: the app link (final ids, R classes for every library package, keep rules).
-        final=False: a library's own link, only to get R.java with non-final ids for compiling it."""
-        mf = os.path.join(work, "AndroidManifest.xml")
-        with open(mf, "w", encoding="utf-8") as f:
-            f.write(manifest_text)
-        arts = list(reversed(pre.runtime if final else deps.closure(pre.direct_runtime)))
+    def overlay_zips(self, m, pre, arts, work, final):
+        """The compiled resource overlays of one aapt2 link, in the order of its -R flags (a later one wins): the resources of every library in `arts` (lowest priority first), a React Native app's Metro
+        drawables, the module's own res folders, and last the folder that `resValues` become (written to work/gen_res). The APK link and the bundle link both take this list: they used to build it twice,
+        and the bundle's copy had no gen_res, so a resource made by resValues was in the APK and missing from the bundle."""
         overlays = []
         for a in arts:
             for rd in a.res:
@@ -1046,6 +1043,17 @@ class Builder:
             z = self.compile_res(rd, "%s:%s:%s" % (m.name, self.variant, os.path.basename(rd)))
             if z:
                 overlays.append(z)
+        return overlays
+
+    def link_resources(self, m, pre, ns, appid, manifest_text, work, final):
+        """final=True: the app link (final ids, R classes for every library package, keep rules).
+        final=False: a library's own link, only to get R.java with non-final ids for compiling it."""
+        mf = os.path.join(work, "AndroidManifest.xml")
+        with open(mf, "w", encoding="utf-8") as f:
+            f.write(manifest_text)
+        arts = list(reversed(pre.runtime if final else deps.closure(pre.direct_runtime)))
+        overlays = self.overlay_zips(m, pre, arts, work, final)
+        js = getattr(pre, "js", None) if final else None
         assets = None
         if final:
             ad = [d for a in arts for d in a.assets] + list(m.asset_dirs)
@@ -1886,20 +1894,9 @@ class Builder:
                "--version-name", str(m.versionName)]
         if appid != ns:
             cmd += ["--rename-manifest-package", appid]
-        for a in arts:
-            for rd in a.res:
-                z = self.compile_res(rd, a.label + ":" + os.path.basename(os.path.dirname(rd) or rd))
-                if z:
-                    cmd += ["-R", z]
+        for z in self.overlay_zips(m, pre, arts, work, True):                            # the bundle is always the app link: the very list the APK was linked with
+            cmd += ["-R", z]
         js = getattr(pre, "js", None)
-        if js and os.path.isdir(js["res"]):
-            z = self.compile_res(js["res"], "%s:%s:react-res" % (m.name, self.variant))
-            if z:
-                cmd += ["-R", z]
-        for rd in m.res_dirs:
-            z = self.compile_res(rd, "%s:%s:%s" % (m.name, self.variant, os.path.basename(rd)))
-            if z:
-                cmd += ["-R", z]
         ad = [d for a in arts for d in a.assets] + list(m.asset_dirs)
         if js:
             ad = self.react_assets(m, js, ad)
