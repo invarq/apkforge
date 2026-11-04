@@ -153,7 +153,7 @@ apkforge is Apache-2.0, so you can use it commercially at no cost. If your team 
 - **Sponsored features.** Fund an item from the roadmap, such as Hilt, product flavors or ECDSA signing, and have it built first.
 - **Migration and CI setup.** Moving a Gradle project over with `import-gradle`, offline or air-gapped builds with `vendor`, and a pinned, reproducible toolchain in your CI.
 
-Email [REPLACE-WITH-YOUR-EMAIL](mailto:REPLACE-WITH-YOUR-EMAIL) with a line about your project and what you need.
+Email [gnana.sagar.research@gmail.com](mailto:gnana.sagar.research@gmail.com) with a line about your project and what you need.
 
 ## Contributing
 
