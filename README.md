@@ -39,10 +39,10 @@ The first run downloads the toolchain into `~/.apkforge`.
 ```bash
 pip install apkforge                  # from PyPI, Python 3.9+
 uvx apkforge --help                   # or run it without installing, via uv
-python3 apkforge-1.3.0.pyz --help     # or the single-file build: nothing to install
+python3 apkforge-1.3.1.pyz --help     # or the single-file build: nothing to install
 ```
 
-Build the single-file `.pyz` yourself with `python3 tools/build_pyz.py . dist/apkforge-1.3.0.pyz` (see [Development](https://github.com/invarq/apkforge#development)).
+Build the single-file `.pyz` yourself with `python3 tools/build_pyz.py . dist/apkforge-1.3.1.pyz` (see [Development](https://github.com/invarq/apkforge#development)).
 
 ## Quick start
 
@@ -105,7 +105,7 @@ The resource rules and the search order come from Google's plugin source, and th
 
 ## Status and known limitations
 
-**Version 1.3.0, alpha.** apkforge builds real projects, but it is not a drop-in Gradle replacement yet. What does not work today:
+**Version 1.3.1, alpha.** apkforge builds real projects, but it is not a drop-in Gradle replacement yet. What does not work today:
 
 - Hilt: its Gradle plugin rewrites the base class of `@AndroidEntryPoint` classes in bytecode, and apkforge has no such step.
 - Product flavors and flavor dimensions.
@@ -168,7 +168,7 @@ python3 -m unittest discover -s tests           # about a minute and a half with
 The tests that build demo apps skip themselves until the toolchain is there: run `apkforge doctor --bundletool`, then build any app once (`apkforge new /tmp/demo`, `apkforge build /tmp/demo`) so that the API 36 android.jar is downloaded.
 
 ```bash
-python3 tools/build_pyz.py . dist/apkforge-1.3.0.pyz        # the single-file build (carries LICENSE and NOTICE)
+python3 tools/build_pyz.py . dist/apkforge-1.3.1.pyz        # the single-file build (carries LICENSE and NOTICE)
 python3 -m pip install build && python3 -m build            # wheel and sdist into dist/
 tools/bare_env.sh setup fresh && tools/bare_env.sh run fresh python3 -m apkforge doctor     # a machine with no Java
 ```

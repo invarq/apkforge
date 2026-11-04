@@ -12,7 +12,7 @@ import time
 import urllib.error
 import urllib.request
 
-VERSION = "1.3.0"
+VERSION = "1.3.1"
 BUILD = ""                # pre-release label shown by --version (for example "rc1"); empty for a release
 
 

@@ -5,7 +5,7 @@
 #   tools/bare_env.sh setup <name>              create the environment and show that no java tool is visible in it
 #   tools/bare_env.sh run <name> <command...>   run a command in it, for example
 #         tools/bare_env.sh run fresh python3 -m apkforge doctor
-#         tools/bare_env.sh run fresh python3 dist/apkforge-1.3.0.pyz build ./myapp
+#         tools/bare_env.sh run fresh python3 dist/apkforge-1.3.1.pyz build ./myapp
 #   tools/bare_env.sh java <name>               where a java tool is found in it (nowhere, until apkforge has downloaded a JDK)
 #
 # The environments live in $APKFORGE_BARE_DIR (default ${TMPDIR:-/tmp}/apkforge-bare).  HOME is <dir>/<name>/home, so the toolchain apkforge downloads

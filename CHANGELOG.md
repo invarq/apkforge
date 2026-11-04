@@ -1,6 +1,8 @@
 # Changelog
 
-## Unreleased
+## 1.3.1 - 2026-11-04
+
+Adds `google-services.json` and Crashlytics support, and fixes `resValues` missing from App Bundles.
 
 ### Added
 - **`google-services.json` is processed.** apkforge reads the file the way Google's Gradle plugin does (searched in `src/<buildType>/`, `src/` and the module directory; the `client`
@@ -14,9 +16,14 @@
 - **`apkforge crashlytics-upload`** sends that mapping with the Firebase CLI (`firebase crashlytics:mappingfile:upload --app --resource-file`); `--dry-run` prints the command,
   `--app`, `--module` and `--firebase` override what it finds. apkforge never sees a credential: the Firebase CLI holds the login.
 - `tests/test_gms.py`: 79 tests for the above, three of them real builds (an APK and a bundle read back with aapt2) against stand-in Firebase jars in a local repository.
+- `.github/FUNDING.yml` for the Sponsor button. In the README: how to sponsor, Bitcoin and Ethereum addresses with QR codes, a section for companies, the project film and a
+  Firebase section. `docs/assets/` holds the QR codes, the film and the logo files.
 
 ### Changed
 - `apkforge import-gradle` maps `com.google.gms.google-services` and `com.google.firebase.crashlytics` onto the two new settings instead of reporting them as not supported.
+- The README is reorganised (why apkforge, install options, a commands table, status, roadmap, support, contributing). It now lists build-type source sets and dependencies
+  (`src/debug/`, `debugImplementation`) among what does not work yet.
+- `util.VERSION` is `1.3.1` and `util.BUILD` is empty (a release); `apkforge --version` prints `apkforge 1.3.1`.
 
 ### Fixed
 - **`resValues` reach the Android App Bundle.** Before, `apkforge build --aab` linked the bundle without the generated `gen_res` folder that `resValues` become, so a resource
