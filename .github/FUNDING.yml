@@ -1,0 +1,10 @@
+# Powers the "Sponsor" button on the repository page.
+# Reference: https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/displaying-a-sponsor-button-in-your-repository
+
+# Enable this once GitHub Sponsors is live for the account. Until then github.com/sponsors/invarq
+# redirects to the profile page, so there is nothing for the button to open.
+# github: [invarq]
+
+# FUNDING.yml takes URLs, not raw crypto addresses, so this points at the README
+# section that lists them. Up to four custom URLs are allowed.
+custom: ["https://github.com/invarq/apkforge#support-the-project"]
