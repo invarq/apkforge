@@ -1,24 +1,23 @@
 # apkforge
 
-**Build Android apps from anywhere Python runs. No Gradle, no Android Studio, no SDK Manager.**
+**Build Android apps anywhere Python runs. No Gradle. No Android Studio. No SDK Manager.**
 
 [![PyPI](https://img.shields.io/pypi/v/apkforge.svg)](https://pypi.org/project/apkforge/)
 [![Python versions](https://img.shields.io/pypi/pyversions/apkforge.svg)](https://pypi.org/project/apkforge/)
 [![License: Apache-2.0](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](https://github.com/invarq/apkforge/blob/main/LICENSE)
-[![Status: alpha](https://img.shields.io/badge/status-alpha-orange.svg)](https://github.com/invarq/apkforge#status-and-known-limitations)
 [![Sponsor](https://img.shields.io/badge/sponsor-%E2%9D%A4-ea4aaa.svg?logo=githubsponsors)](https://github.com/sponsors/invarq)
 
-[Why apkforge](#why-apkforge) · [See it in action](#see-it-in-action) · [Features](#features) · [Commands](#commands) · [Configuration](#configuration) · [Roadmap](#roadmap) · [For companies](#for-companies) · [Sponsor](#support-the-project)
+[Why apkforge](#why-apkforge) · [Community vs. Enterprise](#community-vs-enterprise) · [See it in action](#see-it-in-action) · [Features](#features) · [Commands](#commands) · [Configuration](#configuration) · [Enterprise Edition](#enterprise-edition-160--170) · [For companies](#for-companies) · [Sponsor](#support-the-project)
 
-apkforge is a Python tool with **no dependencies** (standard library only). It drives `aapt2`, `javac`/`kotlinc` and D8/R8 directly, signs APKs and Android App Bundles with its own pure-Python signature engine, and downloads a pinned toolchain the first time it needs one. A machine with Python 3.9+ and a network connection can build a signed APK and App Bundle, and see what Google Play will object to before anything is uploaded.
+apkforge is a pure-Python Android build system with **zero external Python dependencies**. Standard library only. It compiles resources, Java/Kotlin code, and DEX bytecode, signs APKs and App Bundles with its own deterministic signing engine, and pulls a pinned toolchain automatically on the first run. If a machine has Python 3.9+, it can build, sign, and verify release-ready Android apps and catch Google Play rejections locally before you upload a single byte.
 
 ```bash
 pip install apkforge
 apkforge new myapp --package com.acme.myapp
-apkforge build myapp                    # debug APK → myapp/build/outputs/
+apkforge build myapp                    # debug APK -> myapp/build/outputs/
 ```
 
-The first run downloads the toolchain into `~/.apkforge`. Once your dependencies are cached or vendored, builds run without a network.
+The first run caches the pinned toolchain in `~/.apkforge`. Once your dependencies are cached or vendored, pull the ethernet cable. Everything builds offline.
 
 <p align="center">
   <a href="https://github.com/invarq/apkforge/blob/main/docs/assets/apkforge-film-1080p60.mp4">
@@ -30,31 +29,63 @@ The first run downloads the toolchain into `~/.apkforge`. Once your dependencies
 
 ---
 
+## Community vs. Enterprise
+
+apkforge uses a simple open-core split:
+
+* **Community Edition (`1.3.x`, Apache-2.0):** Live on PyPI right now (`pip install apkforge`). Free for personal and commercial use. Everything you need to build, sign, and verify real Android APKs and App Bundles without touching Gradle or Android Studio.
+* **Enterprise Engine (`1.6.0`, Commercial License):** Built for heavy CI/CD farms, AI app-builder platforms, ARM64/edge workers, and teams that need full production parity. Replaces `aapt2` and `d8` with pure-Python compilers that match Google's outputs byte-for-byte, and adds Hilt, Firebase, product flavors, and standalone test runners.
+* **Enterprise `1.7.0` (Dropping Next):** Ships the Zero-JDK Pure-Python `javac` compiler. No JVM left anywhere in the Java build pipeline.
+
+| Capability | Community (`1.3.x`, Apache-2.0) | Enterprise (`1.6.0+`, Commercial) |
+| :--- | :---: | :---: |
+| **Pure-Python APK & AAB Packaging & v1-v4 Signing** | ✓ | ✓ |
+| **Java, Kotlin, Compose, KSP2, KAPT & View Binding** | ✓ | ✓ |
+| **CMake/NDK Native Builds & React Native (Hermes)** | ✓ | ✓ |
+| **Hermetic `SOURCE_DATE_EPOCH` Builds & Content-Addressed Caching** | ✓ | ✓ |
+| **Control-Flow Bytecode API Guards & 16 KB ELF Page-Size Auditing** | ✓ | ✓ |
+| **Machine-Readable CI/CD JSON Output (`--json`) & Offline Vendoring** | ✓ | ✓ |
+| **Gradle Project Importer (`import-gradle`)** | ✓ | ✓ |
+| **Byte-for-Byte Deterministic `aapt2` & `d8` Compilers (Pure Python)** | - | **1.6.0** |
+| **Zero-SDK ARM64 / On-Device Compilation (Termux, Raspberry Pi, Edge)** | - | **1.6.0** |
+| **Dual-Engine Runtime Switching (Pure-Python vs. Host Toolchain)** | - | **1.6.0** |
+| **Built-In Mock `android.jar` Generator & Standalone Test Runners** | - | **1.6.0** |
+| **Full Multi-Module Gradle Parity (Product Flavors & Build Types)** | - | **1.6.0** |
+| **Hilt Dependency Injection, Firebase & Crashlytics Integration** | - | **1.6.0** |
+| **Zero-JDK Pure-Python `javac` Compiler (No JVM Required)** | - | **1.7.0 (Next)** |
+| **KMS/HSM Signing, SLSA Provenance, CycloneDX SBOM & Audit Logs** | - | **Enterprise** |
+
+Want to license `1.6.0` or get early access to `1.7.0`? Jump to [For companies](#for-companies).
+
+---
+
 ## Why apkforge
 
-**Runs where Gradle is a pain.** A GitHub Action, a plain Docker image, a VPS, a locked-down network where Google's servers are blocked: if Python 3.9+ is there, apkforge can build an Android app. You don't need an Android development environment. Linux is the tested platform (see [Status and known limitations](#status-and-known-limitations)).
+**Runs anywhere Python does.** A bare Docker container, a GitHub Action, a $5 VPS, an ARM64 edge box, or a locked-down network where Google's servers are unreachable. No Gradle daemon eating 2 GB of RAM. No Android Studio install.
 
-**No Python dependency tree.** It uses only the standard library, so there's nothing to install on the Python side, nothing to audit, and nothing to conflict with your environment.
+**Zero Python dependencies.** Just the standard library. Nothing to `pip` conflict, nothing to audit on the Python side, nothing to break your environment six months from now.
 
-**Catches device crashes at build time.** A reference to a JDK-only API fails the build. A platform API newer than `minSdk` with nothing guarding it is reported. 64-bit native libraries are checked for 16 KB page-size readiness, which Google Play requires for apps that target API 35 or higher.
+**Byte-identical, reproducible builds.** Every build stage is hashed by the SHA-256 of its inputs. Nothing changed? Instant cache hit. `SOURCE_DATE_EPOCH` locks all ZIP timestamps (defaulting to ZIP epoch zero `1980-01-01`), ZIP entries are sorted canonically, native C/C++ builds strip host paths via `-ffile-prefix-map`, and signing uses no random salt. Build the same project on two different machines in two different folders and you get the **exact same APK down to the final SHA-256**.
 
-**Tells you who checked what.** Every verification claim is tagged, so you can see whether apkforge's own code was the only reader (`[internal only]`) or whether an independent tool agreed (`[zipalign]`, `[bundletool]`, `[internal + jarsigner]`).
+**Catches device crashes before the APK ever leaves your machine.** Call a JDK-only API that Android doesn't ship? Build fails. Call a platform API newer than `minSdk` without checking `Build.VERSION.SDK_INT`? Bytecode control-flow analysis (handling compound `&&` and `||` branches) catches it. Ship a 64-bit native `.so` that violates Google Play's 16 KB page-size rule? The ELF auditor flags it right at the binary header level.
 
-**A release workflow that's built in.** `keygen`, then `build --release --aab`, then `verify --play`. It signs the APK and the bundle (with a separate upload key if you want one), reads the bundle back, and prints what Google Play will object to. `verify --play` turns those objections into a failing exit status, which is handy for gating a CI/CD pipeline.
+**Built for CI scripts and AI agents.** Gradle dumps walls of unstructured console noise. `apkforge build --json`, `test-bundle --json`, and `verify` print clean JSON reports with strict exit codes (`0` for Play-ready, `1` for blockers).
 
-**Cached and reproducible.** Each build stage is keyed by the SHA-256 of its inputs, so unchanged inputs are cache hits. The same inputs give a byte-identical APK, even when the project sits in a different directory.
+**Receipts on every check.** Every verification line tags who actually checked it: apkforge's own binary readers (`[internal only]`) or Google's external tools agreeing (`[zipalign]`, `[bundletool]`, `[internal + jarsigner]`). No silent assumptions.
 
-**Kotlin, native code and React Native.** KSP2 and KAPT, the Compose compiler plugin, Kotlin Serialization, Parcelize and view binding. NDK/CMake builds for every ABI. React Native with Hermes bytecode.
+**Release workflow out of the box.** `keygen`, then `build --release --aab`, then `verify --play`. It signs your APK and App Bundle (supporting a separate upload key), reads the finished bundle back, and tells you straight up if Google Play is going to reject it.
 
-**Bring your existing project.** `apkforge import-gradle` writes `apkforge.json` from a Gradle project without running Gradle, and `apkforge vendor` copies every dependency file into `vendor/` for offline and air-gapped builds.
+**Real Android features, not toy demos.** Kotlin, KSP2, KAPT, Jetpack Compose, Kotlin Serialization, Parcelize, View Binding, CMake/NDK across every ABI, and React Native with Hermes bytecode.
+
+**Bring existing Gradle projects.** `apkforge import-gradle` parses your `build.gradle` / `build.gradle.kts` files statically without ever running Gradle or a JVM, and `apkforge vendor` pulls every dependency into `vendor/` so air-gapped builds just work.
 
 ---
 
 ## See it in action
 
-These are real outputs from the starter template, with some lines trimmed.
+Real terminal runs from the starter template (trimmed slightly for space).
 
-**A cold build, then the same build again.** The second run is all cache hits, and the APK has the same SHA-256.
+**Cold build, then an instant cached rebuild.** Notice the SHA-256 doesn't budge a single bit.
 
 ```text
 $ apkforge build myapp
@@ -70,7 +101,7 @@ $ apkforge build myapp
 [  0.3s] done in 0.2s
 ```
 
-**A release build before you have a release key.** apkforge tells you what Google Play would refuse.
+**Release build before setting up a release key.** apkforge flags why Play will reject it before you waste time uploading.
 
 ```text
 $ apkforge build myapp --release --aab
@@ -79,7 +110,7 @@ $ apkforge build myapp --release --aab
 [  4.5s] WARN  Google Play would refuse this bundle: signed with the debug certificate (CN=Android Debug, O=Android, C=US): app stores, Google Play included, do not accept apps signed with it; sign with your upload key (a "uploadSigning" or "signing" section in apkforge.json, and --release)
 ```
 
-**The same build after `keygen`.** The bundle is signed with your key, read back, and each claim says who confirmed it.
+**Now run `keygen` and build again.** Signed with your key, read back, and double-checked.
 
 ```text
 $ apkforge keygen myapp
@@ -90,9 +121,9 @@ $ apkforge build myapp --release --aab
 [  2.5s] ok    verified: bundle signature (JAR, SHA-256) [internal + jarsigner]; bundle structure [bundletool]; manifest of com.acme.myapp (versionCode 1, minSdk 24, targetSdk 36) [internal + bundletool]; bundle config: bundletool defaults [internal + bundletool]
 ```
 
-`apkforge verify myapp/build/outputs/*.aab --play` exits with status 0 for this bundle. Run it on a bundle signed with the debug key and it exits with status 1.
+Run `apkforge verify myapp/build/outputs/*.aab --play` and it exits `0`. Pass it a debug-signed bundle and it exits `1`.
 
-**API guards.** A JDK-only API fails the build, and a platform API that's newer than `minSdk` is reported.
+**API guards in action.** Catching a JDK-only crasher and an unguarded newer platform API.
 
 ```text
 $ apkforge build myapp
@@ -106,7 +137,7 @@ $ apkforge build myapp
   (guard each with Build.VERSION.SDK_INT >= N or annotate it, or raise minSdk; "minApiCheck": "off" silences this, "error" fails the build)
 ```
 
-**Importing a Gradle project.** Every statement is counted, and anything apkforge can't build is reported with its file and line. Passwords in the script are never copied.
+**Importing a Gradle project.** Every single statement gets counted. Anything unmapped prints its exact file and line. Passwords are never copied.
 
 ```text
 $ apkforge import-gradle myproject --dry-run
@@ -122,18 +153,18 @@ $ apkforge import-gradle myproject --dry-run
 ## Quick start
 
 ```bash
-apkforge new myapp --package com.acme.myapp     # a project that builds as-is (API 36, minSdk 24)
-apkforge build myapp                            # debug APK, checked after the build → myapp/build/outputs/
-apkforge run myapp                              # build, install over adb, start it (--logcat follows its log)
+apkforge new myapp --package com.acme.myapp     # builds as-is (API 36, minSdk 24)
+apkforge build myapp                            # debug APK, verified -> myapp/build/outputs/
+apkforge run myapp                              # build, adb install, launch (--logcat streams logs)
 
-apkforge keygen myapp                           # release keystore + "signing" section in apkforge.json (password printed once)
+apkforge keygen myapp                           # release keystore + "signing" config (password printed once)
 read -rs APKFORGE_STORE_PASS; export APKFORGE_STORE_PASS
-apkforge build myapp --release --aab            # signed APK + App Bundle; what Google Play objects to is printed
-apkforge verify myapp/build/outputs/*.aab       # JSON report on stdout; --play makes objections a failing exit status
-apkforge test-bundle myapp [--install]          # bundletool's universal APK of the bundle, signed and checked
+apkforge build myapp --release --aab            # signed APK + App Bundle + local Play checks
+apkforge verify myapp/build/outputs/*.aab       # JSON report on stdout; --play fails exit code on blockers
+apkforge test-bundle myapp [--install]          # universal APK via bundletool, signed and checked
 ```
 
-`apkforge --help` lists the rest.
+`apkforge --help` prints everything else.
 
 ---
 
@@ -141,11 +172,11 @@ apkforge test-bundle myapp [--install]          # bundletool's universal APK of 
 
 ```bash
 pip install apkforge                      # from PyPI, Python 3.9+
-uvx apkforge --help                       # run without installing, via uv
-python3 apkforge-1.3.0.pyz --help         # or the single-file build: nothing to install
+uvx apkforge --help                       # zero-install run via uv
+python3 apkforge-1.3.0.pyz --help         # single-file zipapp: drop it anywhere and run
 ```
 
-You can build the single-file `.pyz` yourself with `python3 tools/build_pyz.py . dist/apkforge-1.3.0.pyz` (see [Development](#development)).
+Want to pack the `.pyz` yourself? Run `python3 tools/build_pyz.py . dist/apkforge-1.3.0.pyz` (see [Development](#development)).
 
 ---
 
@@ -153,41 +184,43 @@ You can build the single-file `.pyz` yourself with `python3 tools/build_pyz.py .
 
 | What | When you need it |
 |---|---|
-| Python 3.9+ | Always. Nothing else is installed on the Python side. |
-| A network connection | The first run, to download the toolchain, and for dependencies that aren't cached or vendored. `--offline` forbids it. |
-| Java | Provided for you. apkforge downloads a Temurin 21 JDK without root when the machine has none. |
-| `openssl` | `apkforge keygen`, to create a signing key. If you bring an existing keystore, you don't need it. |
-| `adb` | `apkforge run` and `test-bundle --install`. It's found through `--adb`, `PATH`, `ANDROID_HOME`, `ANDROID_SDK_ROOT`, or Android Studio's SDK folder. |
-| Node.js | React Native builds only, because Metro needs it. |
-| `apksigner`, `zipalign`, `dexdump`, `readelf` | Optional. Each one that's installed turns `[internal only]` claims into claims that Google's tool confirmed. `apkforge doctor --allow-apt` installs them with apt-get. |
+| Python 3.9+ | Always. Zero third-party Python packages are installed. |
+| Network connection | First run only, to pull the toolchain and uncached deps. `--offline` kills all network calls. |
+| Java | Auto-provisioned in Community (`1.3.x`) via Temurin 21 JDK without root if missing. Gone completely in Enterprise `1.7.0`. |
+| `openssl` | Only for `apkforge keygen`. Skip it if you already have a keystore. |
+| `adb` | Only for `apkforge run` and `test-bundle --install`. Found via `--adb`, `PATH`, `ANDROID_HOME`, `ANDROID_SDK_ROOT`, or Android Studio's SDK path. |
+| Node.js | React Native builds only (Metro needs it). |
+| `apksigner`, `zipalign`, `dexdump`, `readelf` | Optional cross-checkers. When present, `[internal only]` claims upgrade to dual-verified claims. `apkforge doctor --allow-apt` installs them via `apt-get`. |
 
 ---
 
 ## The origin
 
-This started in a sandboxed environment where Google's servers were blocked. Gradle couldn't download its dependencies, which closed off the usual way to build an Android app. But an APK is just a zip file, a zip file is just data structures, and data structures have published specifications.
+A few months ago I was trying to build a simple Android app with claude, Claude doesn't have Gradle. The sandbox doesn't have a JVM in the right state for it. And it doesn't have Android Studio. It could write every line of Kotlin I needed and it had, over several interactions but it couldn't turn that Kotlin into an APK. So that got me thinking. An APK is literally just a ZIP file full of documented binary blobs. Python can pack ZIP files. Python can write bytes. So why do we need a giant JVM daemon just to stitch them together?
 
-So I read the specs: the APK binary format, all four signing schemes, the DEX bytecode layout, the Maven POM format, the aapt2 resource format, and the Gradle module metadata format. Then I reimplemented each transformation from scratch, in Python, with no external libraries. The result is apkforge: the layer that Gradle and the Android Gradle plugin normally provide, rebuilt in Python with no external libraries. It drives Google's own aapt2 and D8/R8 and the Java and Kotlin compilers for the parts that are best left to them.
+So I pulled the published Android specs and AOSP sources and started breaking the build chain down piece by piece: the APK binary layout, all four signing schemes, DEX bytecode, `resources.arsc`, Maven POMs, and Gradle Module Metadata. I wired up an automated verification loop against Google's own binaries and kept grinding until the outputs matched.
+
+What started as a stubborn workaround turned into **Community Edition (`1.3.x`)**, which became an AGP alternative. Then I kept pushing. In **Enterprise (`1.6.0`)**, `aapt2` and `d8` themselves are pure Python, matching Google's official compilers **byte-for-byte**. Next up in **`1.7.0`**, I'm working on `javac` with the same level of rigor.
 
 ---
 
 ## How it works
 
-apkforge isn't a build script that wraps Gradle. It reimplements the parts of the Android build that Gradle and the Android Gradle plugin normally handle, component by component, from the public specifications.
+apkforge does not wrap Gradle. It replaces the Android build layer piece by piece from the public specs.
 
-**Six main components:**
+**Six core pieces:**
 
-**1. Pure-Python signing engine.** The Android signing specification (the v1 JAR signature, the v2 APK Signature Block, v3, and the v4 `.idsig` file for incremental install) is implemented directly from the PKCS#1, DER encoding, and APK format specs, with RSA PKCS#1 v1.5 and SHA-256. No JVM, no `apksigner`, no signing library. Signing is deterministic: the same APK and key always give the same bytes. Creating a key uses `openssl`, and reading a JKS keystore uses `keytool` from the JDK apkforge downloads.
+**1. Pure-Python signing engine.** All four Android signing schemes (v1 JAR, v2 APK Signature Block, v3, and v4 `.idsig` for incremental streaming installs) are built straight from the PKCS#1, DER, and APK specs using RSA PKCS#1 v1.5 and SHA-256. No JVM, no `apksigner`, no crypto packages. Strictly deterministic: same APK and same key always produce identical bytes. Key creation uses `openssl`, and reading legacy JKS files uses `keytool`.
 
-**2. Maven dependency resolver.** It reads POMs and Gradle module metadata (GMM): parent POMs, properties, BOM imports, `dependencyManagement`, exclusions, and Gradle-style highest-version-wins. GMM is read first when a library publishes it, which is how Kotlin Multiplatform libraries (androidx, Compose, coroutines, okhttp 5, coil 3) point an Android app at the right artifact. Repositories are searched in this order: `vendor/`, `~/.m2`, the `repositories` in `apkforge.json`, then Google Maven and Maven Central. All of it runs in pure Python with no Gradle and no third-party libraries.
+**2. Maven & Gradle Module Metadata resolver.** Parses POMs and Gradle Module Metadata (GMM): parent POMs, properties, BOMs, `dependencyManagement`, exclusions, and Gradle-style highest-version-wins. GMM takes priority whenever a library ships it, so Kotlin Multiplatform libraries (`androidx`, Compose, Coroutines, OkHttp 5, Coil 3) land on the right Android artifact every time. Searches in strict order: `vendor/`, `~/.m2`, custom `repositories` in `apkforge.json`, Google Maven, then Maven Central.
 
-**3. Self-provisioning toolchain manager.** `apkforge doctor` downloads and pins aapt2, D8/R8, an `android.jar`, and a Temurin JDK (when the machine has none), all into `~/.apkforge` and without root. The Kotlin compiler, the KSP2 runner, bundletool, and for native builds CMake, Ninja and an NDK are provisioned the same way, either up front with `--kotlin`, `--ksp`, `--bundletool` and `--native`, or when a build first needs them. For every tool, apkforge looks in this order: an environment override, the Android SDK you already have, what it provisioned earlier, then a download. Every download is verified against SHA-256 pins, and `--offline` forbids downloads entirely.
+**3. Self-provisioning toolchain manager.** `apkforge doctor` downloads and pins `aapt2`, `D8/R8`, `android.jar`, and a Temurin 21 JDK (if your machine has no Java) straight into `~/.apkforge`, no root needed. `kotlinc`, KSP2, `bundletool`, and CMake/Ninja/NDK download the same way on demand or upfront (`--kotlin`, `--ksp`, `--bundletool`, `--native`). Checks env overrides first, then any existing Android SDK, then cached tools, then pinned downloads checked against SHA-256 hashes. `--offline` shuts down all network access.
 
-**4. Content-addressed build pipeline.** Each build stage is a pure function of its inputs, keyed by their SHA-256. Unchanged inputs give immediate cache hits, and changed inputs rebuild only the affected stages. Builds are also deterministic: the ZIP writer sorts its entries and stamps every one with a single fixed timestamp (or `SOURCE_DATE_EPOCH`), and signing has no random salt, so identical inputs produce a byte-identical APK.
+**4. Content-addressed build cache.** Every build stage is keyed by the SHA-256 of its inputs. Unchanged inputs skip straight past work; changed inputs rebuild only what depends on them. Sorted ZIP entries, fixed timestamps (`SOURCE_DATE_EPOCH`, defaulting to `1980-01-01`), and salt-free signing keep outputs byte-identical across machines and folders.
 
-**5. Independent verification layer.** apkforge reads back what it produces, with readers written from the specs: APK signatures, ZIP alignment, class files and DEX, `resources.arsc`, ELF headers, and the protobuf files inside App Bundles. When Google's `apksigner`, `zipalign`, `dexdump`, `readelf`, `jarsigner` or bundletool are installed, they're asked too, and each claim says who agreed.
+**5. Independent binary verification.** apkforge reads back everything it writes using its own binary parsers: APK signature blocks, ZIP alignment, `.class` and `.dex` bytecode, `resources.arsc`, ELF headers, and App Bundle protobufs. If Google's `apksigner`, `zipalign`, `dexdump`, `readelf`, `jarsigner`, or `bundletool` are on the machine, apkforge asks them too and tags every claim with who signed off.
 
-**6. Project model and Gradle importer.** `apkforge.json` holds the full project configuration, and it's a readable JSON file rather than a DSL. `apkforge import-gradle` tokenizes and parses existing `build.gradle` files (Groovy and Kotlin DSL) and writes `apkforge.json` without running Gradle, without a JVM, and without treating `build.gradle` as code to execute. Every statement it reads lands in exactly one class: mapped, ignored on purpose, not mapped (reported with its file and line), or structural. The counts are checked against each other.
+**6. Static Gradle importer & plain JSON config.** `apkforge.json` replaces Groovy/Kotlin build scripts with readable JSON. `apkforge import-gradle` tokenizes and parses `build.gradle` and `build.gradle.kts` statically. No Gradle, no JVM, no executing random build scripts. Every statement read lands in one bucket (mapped, ignored on purpose, unmapped with exact file and line, or structural), and the totals cross-check.
 
 ---
 
@@ -195,59 +228,59 @@ apkforge isn't a build script that wraps Gradle. It reimplements the parts of th
 
 ### Build
 
-- **Java and Kotlin.** `javac` and `kotlinc` (the Kotlin compiler is downloaded on first use), with `java`, `javacArgs`, `kotlinArgs` and `kotlinJvmTarget` settings.
-- **Annotation processing.** KSP2, KAPT and plain `annotationProcessor` dependencies, with `kspArgs` and `kaptArgs`. The token `${projectDir}` expands to the module directory, which is how Gradle scripts point Room's schema location.
-- **Kotlin compiler plugins.** Jetpack Compose, Kotlin Serialization and Parcelize switch on automatically when the project uses them, and `compose`, `serialization` and `parcelize` force them on or off.
-- **View binding.** The `*Binding` classes that the Android Gradle plugin generates from `res/layout*/*.xml`, without Gradle. Data binding isn't supported.
-- **Build constants and resources.** `buildConfigFields`, `resValues` and manifest `placeholders`.
-- **Manifest merging.** Libraries add components, permissions, features and queries, the app wins on conflicts, `tools:node`, `remove` and `replace` are honored, and a library with a higher `minSdkVersion` than the app is an error.
-- **R8.** `"minify": true` runs R8 with default rules condensed from the Android Gradle plugin's `proguard-android-optimize.txt`, and library modules ship their `consumerProguardFiles` inside the AAR.
-- **Resource optimization (opt-in).** `aapt2 optimize` shortens resource paths and can use sparse tables and collapsed names. apkforge reads the result back with its own `resources.arsc` reader and refuses it if any resource id, value or kept name was lost.
-- **Multi-module projects.** Library modules build to AARs, and `apkforge publish` writes them into a Maven-layout directory.
-- **Gradle-like layout, detected for you.** `src/main/java`, `src/main/kotlin`, `res`, `assets` and `jniLibs` are found automatically, flat layouts work too, and `sourceDirs`, `resDirs` and `assetDirs` override them.
+- **Java and Kotlin.** Runs `javac` and `kotlinc` (auto-downloaded on first use), with `java`, `javacArgs`, `kotlinArgs`, and `kotlinJvmTarget` controls.
+- **Annotation processing.** KSP2, KAPT, and classic `annotationProcessor`, with `kspArgs` and `kaptArgs`. `${projectDir}` expands to the module folder automatically (handy for Room schema exports).
+- **Kotlin compiler plugins.** Jetpack Compose, Kotlin Serialization, and Parcelize turn on automatically when detected in dependencies, or you can force them via `compose`, `serialization`, and `parcelize`.
+- **View binding.** Generates `*Binding` classes straight from `res/layout*/*.xml` with zero Gradle.
+- **Build constants and resources.** `buildConfigFields`, `resValues`, and manifest `placeholders`.
+- **Manifest merging.** Merges library components, permissions, features, and `<queries>` with app-wins resolution, honors `tools:node`, `remove`, and `replace`, and errors out if a library demands a higher `minSdkVersion` than your app.
+- **R8 shrinking.** `"minify": true` runs R8 with optimized defaults pulled from `proguard-android-optimize.txt`, and library modules pack their `consumerProguardFiles` right into the AAR.
+- **Resource optimization (opt-in).** Runs `aapt2 optimize` for shorter resource paths, sparse tables, and collapsed names, then reads the output back through apkforge's own `resources.arsc` parser and rejects it if a single resource ID, value, or kept name went missing.
+- **Multi-module workspaces.** Library modules output AARs, and `apkforge publish` writes them straight into a local Maven-layout repo.
+- **Zero-boilerplate layout detection.** Picks up standard Gradle folders (`src/main/java`, `src/main/kotlin`, `res`, `assets`, `jniLibs`) as well as flat layouts automatically, with `sourceDirs`, `resDirs`, and `assetDirs` overrides.
 
 ### Native code and React Native
 
-- **NDK and CMake.** Point `"native"` at a `CMakeLists.txt` and apkforge builds every ABI in `"abis"`. CMake and Ninja come from PyPI wheels, so every machine uses the same versions. The libraries to package are found through CMake's File API instead of scraping build output, each one is stripped (the unstripped copy stays in the build tree for symbolication), and `libc++_shared.so` is added when the STL needs it. `-ffile-prefix-map` keeps the output independent of where the project and the NDK live, and 64-bit libraries are linked for 16 KB pages when the NDK is older than r28.
-- **React Native with Hermes.** Non-debug builds run Metro to bundle the JavaScript and `hermesc` to compile it to Hermes bytecode, with the same commands React Native's own Gradle plugin uses. The bundle goes into `assets/` stored uncompressed, and the source maps are copied to `build/outputs/`. It needs Node.js and your project's `node_modules`.
+- **NDK and CMake.** Point `"native"` at a `CMakeLists.txt` and apkforge builds every ABI in `"abis"`. CMake and Ninja come from pinned PyPI wheels so every machine builds identically. Output `.so` files come from CMake's File API (no fragile stdout scraping), get stripped automatically (keeping unstripped copies in the build tree for symbolication), and pull in `libc++_shared.so` whenever the STL needs it. `-ffile-prefix-map` keeps paths reproducible, and 64-bit libs automatically get 16 KB page-size linker flags on NDKs older than r28.
+- **React Native with Hermes.** Non-debug builds invoke Metro to bundle JS and `hermesc` to compile Hermes bytecode with the exact flags React Native's Gradle plugin uses. The bundle lands uncompressed in `assets/` and source maps copy to `build/outputs/`. Needs Node.js and `node_modules`.
 
 ### Dependencies and offline builds
 
-- **Scopes.** `api`, `implementation`, `compileOnly`, `runtimeOnly`, `annotationProcessor`, `kapt`, `ksp`, `platforms` (BOMs), `projects` and `files`.
-- **Vendoring.** `apkforge vendor` copies every dependency file into `vendor/` in Maven layout. Commit it, and the project builds with no network at all.
-- **Offline mode.** `--offline` (or `APKFORGE_OFFLINE=1`) forbids every download: toolchain, dependencies and apt.
+- **Scopes.** `api`, `implementation`, `compileOnly`, `runtimeOnly`, `annotationProcessor`, `kapt`, `ksp`, `platforms` (BOMs), `projects`, and `files`.
+- **Vendoring.** `apkforge vendor` mirrors every resolved dependency into `vendor/` in standard Maven layout. Commit that folder and build air-gapped forever.
+- **Offline mode.** `--offline` (or `APKFORGE_OFFLINE=1`) blocks every download: toolchains, Maven libraries, and apt.
 
 ### Signing and release
 
-- **All four signing schemes, in pure Python.** v1, v2, v3, and the v4 `.idsig` file (`--v4` or `"v4Signing": true`) that lets `adb install` stream incrementally on Android 11 and up.
-- **`keygen`.** Creates an RSA 2048 PKCS#12 keystore (valid about 27 years) and the matching `signing` section. The password comes from an environment variable and is never written to the project, an existing keystore is never overwritten, and `--upload` creates a separate upload key.
-- **App Bundles.** `--aab` builds the bundle, signs it with `uploadSigning` (or `signing` when there's no upload key), reads it back and checks it. `--no-sign-aab` leaves it unsigned for a CI step that signs somewhere else. `test-bundle` turns the bundle into bundletool's universal APK, signed and checked, and `--install` runs it on a device.
-- **What Google Play will object to.** Errors: an unsigned bundle, the debug certificate, and `android:debuggable`. Warnings: a certificate that's valid only until 22 October 2033 or earlier, a `com.example` package, several signatures, and SHA-1-only digests.
-- **Keys stay out of git.** The `.gitignore` that `apkforge new` writes excludes `*.p12`, `*.jks` and `*.keystore`.
+- **All four signing schemes in pure Python.** v1, v2, v3, and v4 `.idsig` (`--v4` or `"v4Signing": true`) for incremental `adb` streaming installs on Android 11+.
+- **`keygen`.** Generates an RSA 2048 PKCS#12 keystore (valid ~27 years) and wires up the `signing` block in `apkforge.json`. Passwords live only in env vars, never in project files. Existing keystores are never clobbered, and `--upload` generates a separate Google Play upload key.
+- **App Bundles.** `--aab` builds the bundle, signs with `uploadSigning` (or `signing`), reads it back, and verifies everything. `--no-sign-aab` leaves it unsigned for a separate CI signing step. `test-bundle` builds bundletool's universal APK, signs and checks it, and `--install` pushes it straight to a phone.
+- **Google Play pre-flight checks.** Hard errors: unsigned bundle, debug cert, `android:debuggable`. Warnings: certs expiring on or before 22 October 2033, `com.example` package names, multiple signatures, and SHA-1-only digests.
+- **Keys stay out of git.** `apkforge new` writes a `.gitignore` excluding `*.p12`, `*.jks`, and `*.keystore` right from the start.
 
 ### Verification and safety nets
 
-- **Tagged claims.** Every claim is tagged `[internal only]`, `[apksigner]`, `[zipalign]`, `[readelf]`, `[internal + jarsigner]`, `[bundletool]`, or `[not checked; why]`, so nothing is vouched for by a tool that didn't look.
-- **Manifest and dex agree.** Every component named in the manifest is checked to exist in the dex, and `android:exported` must be declared on components that have intent filters.
-- **JDK-only API check.** `javac -cp android.jar` accepts APIs that only the JDK has, such as `java.net.http.HttpClient`, and they then crash on a device. apkforge reads your class files and fails the build (`"apiCheck": "error"` is the default).
-- **Min-API guard.** Platform APIs newer than `minSdk` are reported unless an `SDK_INT` comparison, `@RequiresApi`, `@TargetApi` or `@SuppressLint("NewApi")` protects them. The analysis follows the bytecode's control flow, so `&&` and `||` come out right, and where it can't tell, it reports (`"minApiCheck": "warn"` is the default).
-- **16 KB page size.** 64-bit native libraries are checked for segment alignment, offset congruence and RELRO placement, plus ZIP alignment, with `readelf` and `zipalign -P 16` as independent second readers when they're installed.
-- **Machine-readable results.** `build --json` and `test-bundle --json` print the result as JSON, and `verify` writes a JSON report to stdout with its log on stderr. The exit status is 1 when anything rejects the file.
+- **Tagged claims.** Every check prints `[internal only]`, `[apksigner]`, `[zipalign]`, `[readelf]`, `[internal + jarsigner]`, `[bundletool]`, or `[not checked; why]`. You always know what actually inspected the file.
+- **Manifest vs. DEX check.** Confirms every component named in `AndroidManifest.xml` actually exists in DEX, and enforces `android:exported` on anything with an intent filter.
+- **JDK-only API guard.** `javac -cp android.jar` happily compiles calls like `java.net.http.HttpClient` that explode at runtime on a real phone. apkforge scans compiled classes and kills the build (`"apiCheck": "error"` by default).
+- **Control-flow Min-API guard.** Flags platform APIs newer than `minSdk` unless wrapped in an `SDK_INT` check, `@RequiresApi`, `@TargetApi`, or `@SuppressLint("NewApi")`. Walks real bytecode control flow so `&&` and `||` checks work properly (`"minApiCheck": "warn"` by default).
+- **16 KB page-size ELF check.** Audits 64-bit native `.so` libraries for ELF segment alignment, offset congruence, RELRO placement, and ZIP alignment, cross-checking with `readelf` and `zipalign -P 16` when installed.
+- **Machine-readable output.** `build --json` and `test-bundle --json` emit structured JSON. `verify` writes its JSON audit report to `stdout` (logs go to `stderr`) and exits `1` on any rejection.
 
 ### Device workflow
 
-- **`apkforge run`.** Builds, installs over adb, starts the launcher activity (or the one you name with `--activity`), and with `--logcat` follows the app's log. The device comes from `--serial`, `$ANDROID_SERIAL`, or the only one connected, and every adb call has a time limit, so a phone that fell asleep ends as an error instead of a hang. `--reinstall` handles a signing-key mismatch (it deletes the app's data, and says so).
+- **`apkforge run`.** Builds, installs via `adb`, launches the launcher activity (or `--activity`), and streams logs with `--logcat`. Picks `--serial`, `$ANDROID_SERIAL`, or the sole plugged-in device. Every `adb` call has a strict timeout so a sleeping phone fails fast instead of hanging your shell. `--reinstall` handles signing-key mismatches cleanly (warning you before wiping app data).
 
 ### Migration and templates
 
-- **`import-gradle`.** Groovy and Kotlin DSL, with no Gradle, no JVM and no network. Everything it can't map is reported with its file and line, signing passwords are never copied (the `signing` section names an environment variable instead), `--dry-run` prints without writing, and `--force` overwrites an existing `apkforge.json`.
-- **Templates.** `apkforge new` creates a `java`, `kotlin` or `multi` (an app plus a library module) project that builds as-is.
+- **`import-gradle`.** Parses Groovy and Kotlin DSL statically with zero Gradle, JVM, or network. Reports anything unmapped with file and line, never copies signing passwords (maps them to env vars instead), supports `--dry-run`, and won't overwrite `apkforge.json` without `--force`.
+- **Templates.** `apkforge new` spins up `java`, `kotlin`, or `multi` (app + library) starter projects that build immediately.
 
 ### Supply chain and project hygiene
 
-- **Pinned downloads.** SHA-256 pins ship inside the package (`pins.json`), a download that doesn't match its pin is refused unless you pass `--trust-new`, and `apt-get` is never touched without `--allow-apt`.
-- **Release pipeline.** CI runs the offline tests on Python 3.9 to 3.14, PyPI publishing uses Trusted Publishing (no token is stored anywhere), the workflow's actions are pinned to commit SHAs, and the wheel and sdist are built with `SOURCE_DATE_EPOCH` set. The workflow also builds the single-file `.pyz` and writes a `SHA256SUMS` file for the release.
-- **Zero dependencies, on purpose.** The package declares none, and it's kept that way.
+- **Pinned downloads.** SHA-256 pins ship inside `pins.json`. Hash mismatches are refused unless you explicitly pass `--trust-new`, and `apt-get` is never touched without `--allow-apt`.
+- **Locked-down release pipeline.** CI runs offline tests across Python 3.9 to 3.14, PyPI publishes via Trusted Publishing (zero stored tokens), GitHub Actions are pinned to commit SHAs, wheels and sdists build with `SOURCE_DATE_EPOCH`, and every release ships a single-file `.pyz` with `SHA256SUMS`.
+- **Zero dependencies by rule.** Declared empty in packaging, kept empty on purpose.
 
 ---
 
@@ -255,25 +288,25 @@ apkforge isn't a build script that wraps Gradle. It reimplements the parts of th
 
 | Command | What it does |
 |---|---|
-| `new` | Create a project that builds as-is (`--template` takes `java`, `kotlin` or `multi`; also `--package` and `--name`) |
+| `new` | Scaffold a ready-to-build project (`--template`: `java`, `kotlin`, or `multi`; plus `--package` and `--name`) |
 | `build` | Build an APK, or an AAR for a library module (`--release`, `--aab`, `--no-sign-aab`, `--v4`, `--optimize-resources`, `--react`, `--module`, `--json`) |
-| `run` | Build, install on a device or emulator over adb, and start the app (`--serial`, `--logcat`, `--activity`, `--reinstall`) |
-| `keygen` | Create a release keystore and the matching `signing` section in `apkforge.json` (`--upload` adds a separate upload key) |
-| `verify` | Verify an APK or bundle (signatures, alignment, 16 KB page size) and say which claims an external tool confirmed (`--play`, `--elf`, `--allow-unsigned`) |
-| `test-bundle` | Try an App Bundle out locally through bundletool's universal APK, signed and checked (`--install`) |
-| `import-gradle` | Write `apkforge.json` from an existing Gradle project, with no Gradle needed (`--dry-run`, `--force`) |
-| `vendor` | Copy every dependency file into `vendor/` (Maven layout) so builds can run offline |
-| `publish` | Publish a library module into a Maven-layout directory (`--module`, `--repo`, `--group`, `--version-name`) |
-| `doctor` | Provision and check the toolchain (`--kotlin`, `--ksp`, `--bundletool`, `--native`, `--allow-apt`) |
-| `clean` | Delete `.apkforge/` and `build/` |
+| `run` | Build, install over `adb`, and launch (`--serial`, `--logcat`, `--activity`, `--reinstall`) |
+| `keygen` | Create a release keystore and matching `signing` block in `apkforge.json` (`--upload` adds a separate upload key) |
+| `verify` | Audit an APK or App Bundle (signatures, alignment, 16 KB pages, Play rules) with tagged tool claims (`--play`, `--elf`, `--allow-unsigned`) |
+| `test-bundle` | Build, sign, and check bundletool's universal APK from a bundle (`--install`) |
+| `import-gradle` | Convert an existing Gradle project to `apkforge.json` statically (`--dry-run`, `--force`) |
+| `vendor` | Copy every dependency into `vendor/` (Maven layout) for air-gapped offline builds |
+| `publish` | Publish a library module to a local Maven-layout directory (`--module`, `--repo`, `--group`, `--version-name`) |
+| `doctor` | Provision and check toolchain pieces (`--kotlin`, `--ksp`, `--bundletool`, `--native`, `--allow-apt`) |
+| `clean` | Wipe `.apkforge/` caches and `build/` outputs |
 
-The commands that use the toolchain also take `-v` (show cache hits and rebuild reasons), `--offline`, `--allow-apt` and `--trust-new`. `apkforge --help` and `apkforge <command> --help` list every option.
+Toolchain commands also take `-v` (cache hits and rebuild reasons), `--offline`, `--allow-apt`, and `--trust-new`. Run `apkforge --help` or `apkforge <command> --help` for every flag.
 
 ---
 
 ## Configuration
 
-Each module is described by `apkforge.json`, a plain JSON file. A single module sits at the project root, and several modules go under a `modules` key. Here's a fuller example:
+Every module lives in `apkforge.json`. Single-module projects put it at the root; multi-module setups group modules under `modules`:
 
 ```json
 {
@@ -311,190 +344,89 @@ Each module is described by `apkforge.json`, a plain JSON file. A single module 
 }
 ```
 
-Settings are checked before the build starts. A bad value for `apiCheck`, `minApiCheck` or `elfAlignment`, or a typo inside the `native`, `react`, `optimizeResources` or `uploadSigning` blocks, is an error up front rather than after the compile.
+Config values are validated before a single file compiles. A bad value in `apiCheck`, `minApiCheck`, or `elfAlignment`, or a typo inside `native`, `react`, `optimizeResources`, or `uploadSigning` fails immediately upfront.
 
 | Setting | Default | What it does |
 |---|---|---|
-| `minSdk`, `targetSdk`, `compileSdk` | 24, 35, 35 | SDK levels (`apkforge new` writes 36 for the last two). The `android.jar` of `compileSdk` is downloaded on first use |
-| `versionCode`, `versionName` | 1, `"1.0"` | The app's version |
+| `minSdk`, `targetSdk`, `compileSdk` | 24, 35, 35 | SDK levels (`apkforge new` writes 36 for target/compile). Downloads the matching `android.jar` automatically |
+| `versionCode`, `versionName` | 1, `"1.0"` | App version metadata |
 | `java` | 17 | Java language level |
 | `minify` | false | Run R8 on release builds |
-| `optimizeResources` | false | `aapt2 optimize` on release builds. `true`, or an object with `shortenPaths`, `sparseEncoding`, `collapseNames`, `dedupe` and `keep` |
-| `viewBinding` | false | Generate the `*Binding` classes |
-| `compose`, `serialization`, `parcelize` | automatic | Kotlin compiler plugins. `true` or `false` forces them |
-| `native` | false | Build C/C++ with CMake and the NDK. `true`, the path of a `CMakeLists.txt`, or an object with `cmake`, `cmakeVersion`, `ndkVersion`, `arguments`, `cFlags`, `cppFlags`, `targets`, `stl` and `strip` |
+| `optimizeResources` | false | Run `aapt2 optimize` on release builds. `true`, or an object with `shortenPaths`, `sparseEncoding`, `collapseNames`, `dedupe`, and `keep` |
+| `viewBinding` | false | Generate `*Binding` classes from layout XMLs |
+| `compose`, `serialization`, `parcelize` | automatic | Kotlin compiler plugins (`true` or `false` forces them) |
+| `native` | false | Build C/C++ via CMake and NDK. `true`, path to `CMakeLists.txt`, or an object with `cmake`, `cmakeVersion`, `ndkVersion`, `arguments`, `cFlags`, `cppFlags`, `targets`, `stl`, and `strip` |
 | `abis` | all four | `arm64-v8a`, `armeabi-v7a`, `x86_64`, `x86` |
-| `react` | false | React Native with Hermes. `true`, or an object with `root`, `entryFile`, `hermes`, `hermesFlags` and more |
-| `apiCheck` | `"error"` | References to APIs that `android.jar` doesn't have (JDK-only APIs). `"error"`, `"warn"` or `"off"` |
-| `minApiCheck` | `"warn"` | Platform APIs newer than `minSdk` with no guard. `"warn"`, `"error"` or `"off"` |
-| `elfAlignment` | `"warn"` | 16 KB page-size check on 64-bit native libraries. `"warn"`, `"error"` or `"off"` |
-| `v4Signing` | false | Also write `<apk>.idsig` beside each APK |
-| `buildConfigFields`, `resValues`, `placeholders` | empty | Generated constants, resource values and manifest placeholders |
-| `kspArgs`, `kaptArgs` | empty | Arguments for KSP and KAPT (`${projectDir}` is the module directory) |
-| `javacArgs`, `kotlinArgs`, `kotlinJvmTarget` | empty | Compiler settings |
+| `react` | false | React Native with Hermes. `true`, or an object with `root`, `entryFile`, `hermes`, `hermesFlags`, and related options |
+| `apiCheck` | `"error"` | Catch JDK-only APIs absent from `android.jar` (`"error"`, `"warn"`, or `"off"`) |
+| `minApiCheck` | `"warn"` | Flag unguarded platform APIs newer than `minSdk` (`"warn"`, `"error"`, or `"off"`) |
+| `elfAlignment` | `"warn"` | 16 KB page-size check on 64-bit native `.so` libs (`"warn"`, `"error"`, or `"off"`) |
+| `v4Signing` | false | Write `<apk>.idsig` next to each APK |
+| `buildConfigFields`, `resValues`, `placeholders` | empty | Generated constants, XML resource values, and manifest placeholders |
+| `kspArgs`, `kaptArgs` | empty | Arguments for KSP and KAPT (`${projectDir}` expands to the module folder) |
+| `javacArgs`, `kotlinArgs`, `kotlinJvmTarget` | empty | Compiler flags |
 | `repositories` | empty | Extra Maven repositories |
-| `signing`, `uploadSigning` | none | `keystore`, `alias` and `storePasswordEnv` (also `keyPasswordEnv`). `uploadSigning` is the key the App Bundle is signed with |
-| `dependencies` | empty | `api`, `implementation`, `compileOnly`, `runtimeOnly`, `annotationProcessor`, `kapt`, `ksp`, `platforms`, `projects` and `files` |
-| `modules` | none | Several modules in one file. Each one can set `type` (`app` or `library`) and `dir` |
+| `signing`, `uploadSigning` | none | `keystore`, `alias`, and `storePasswordEnv` (plus optional `keyPasswordEnv`). `uploadSigning` signs the App Bundle |
+| `dependencies` | empty | `api`, `implementation`, `compileOnly`, `runtimeOnly`, `annotationProcessor`, `kapt`, `ksp`, `platforms`, `projects`, and `files` |
+| `modules` | none | Multi-module map in one file (`type`: `app` or `library`, and `dir`) |
 
 **Environment variables:**
 
 | Variable | What it does |
 |---|---|
-| `APKFORGE_HOME` | Where the toolchain and caches live (default `~/.apkforge`) |
+| `APKFORGE_HOME` | Toolchain and cache folder (default `~/.apkforge`) |
 | `APKFORGE_OFFLINE=1` | Same as `--offline` |
 | `APKFORGE_ALLOW_APT=1` | Same as `--allow-apt` |
-| `APKFORGE_STORE_PASS`, `APKFORGE_UPLOAD_PASS`, `APKFORGE_KEY_PASS` | Keystore passwords. `APKFORGE_KEY_PASS` falls back to the store password when it's unset |
-| `APKFORGE_AAPT2`, `APKFORGE_ANDROID_JAR`, `APKFORGE_BUNDLETOOL`, `APKFORGE_KSP` | Use your own copy of a tool instead of downloading one |
-| `SOURCE_DATE_EPOCH` | The timestamp for every ZIP entry (the default is 1980-01-01, the ZIP format's zero) |
+| `APKFORGE_STORE_PASS`, `APKFORGE_UPLOAD_PASS`, `APKFORGE_KEY_PASS` | Keystore passwords (`APKFORGE_KEY_PASS` falls back to store password if unset) |
+| `APKFORGE_AAPT2`, `APKFORGE_ANDROID_JAR`, `APKFORGE_BUNDLETOOL`, `APKFORGE_KSP` | Use your own local tool copies instead of downloading |
+| `SOURCE_DATE_EPOCH` | Fixed timestamp written to every ZIP entry (default `1980-01-01`, ZIP epoch zero) |
 
 ---
 
-## What gets downloaded
+## What gets downloaded (Community Edition `1.3.x`)
 
-`apkforge doctor` downloads and checks what a build needs: aapt2, D8/R8, an `android.jar` (API 35), a Temurin JDK when the machine has none, and, with `--bundletool`, bundletool. Builds also fetch the `android.jar` of the project's `compileSdk`. Add `--kotlin`, `--ksp` or `--native` for the Kotlin compiler, the KSP2 runner, or CMake, Ninja and an NDK (the NDK is a download of several hundred MB from Google). Everything lives in `~/.apkforge` (set `APKFORGE_HOME` to move it). Downloads are checked against SHA-256 pins in `pins.json` or the checksum their publisher ships, and recorded on first use. `--offline` forbids downloads.
+In Community Edition (`1.3.x`), `apkforge doctor` pulls and verifies what the build needs: `aapt2`, `D8/R8`, `android.jar` (API 35), a Temurin 21 JDK if Java isn't already installed, and `bundletool` (with `--bundletool`). Builds also fetch the `android.jar` for your `compileSdk`. Pass `--kotlin`, `--ksp`, or `--native` to fetch `kotlinc`, KSP2, or CMake, Ninja, and the NDK. Everything stays inside `~/.apkforge` (move it with `APKFORGE_HOME`), every download checks against SHA-256 pins in `pins.json`, and `--offline` blocks downloads outright.
 
-Most of the toolchain comes from GitHub releases: aapt2 from `lzhiyong/android-sdk-tools` (a static build), the `android.jar` stubs from `Sable/android-platforms`, and the JDK from Temurin. Libraries come from Google Maven and Maven Central unless you've vendored them.
+Upstream sources are pinned: static `aapt2` from `lzhiyong/android-sdk-tools`, `android.jar` stubs from `Sable/android-platforms`, and JDKs from Eclipse Temurin. Libraries come from Google Maven and Maven Central unless you vendor them.
 
-**Java.** The tools apkforge drives (D8/R8, kotlinc, bundletool) are Java programs, so a Java runtime is required. apkforge looks for `java` in `JAVA_HOME`, then on `PATH`, then in the JDK it downloaded itself. When none is found, it downloads a Temurin 21 JDK into `~/.apkforge/toolchain/jdk` without root.
-
-The build system is Gradle-free and Android-Studio-free, but it isn't JVM-free: the Kotlin compiler and D8/R8 are Java programs. What apkforge removes is the need to install or configure a JVM beforehand.
+**Java lookup (`1.3.x`):** Community Edition checks `JAVA_HOME`, then `PATH`, then `~/.apkforge/toolchain/jdk`, downloading Temurin 21 without root if needed. In **Enterprise `1.6.0`**, `aapt2` and `d8` run natively in pure Python; in **Enterprise `1.7.0`**, pure-Python `javac` drops the JDK requirement completely for Java builds.
 
 ---
 
-## Status and known limitations
+## Enterprise Edition (`1.6.0` & `1.7.0`)
 
-**Version 1.3.0, alpha.** apkforge builds real projects, but it isn't a drop-in replacement for Gradle. Here's what works today and what doesn't:
+The **apkforge Enterprise Engine** takes the Community foundation and finishes removing the heavy external toolchain. Built for cloud CI workers, AI app-builder backends, ARM64 edge nodes, and large multi-module Android teams:
 
-| Feature | Status |
-|---|---|
-| Java and Kotlin apps, multi-module projects, library modules (AAR) | ✓ |
-| KSP2 and KAPT annotation processing | ✓ |
-| Jetpack Compose compiler plugin, Kotlin Serialization, Parcelize | ✓ |
-| View binding | ✓ |
-| R8 minification and `aapt2 optimize` | ✓ |
-| App Bundle (AAB) for Google Play | ✓ |
-| CMake / NDK native builds | ✓ |
-| React Native + Hermes | ✓ |
-| **`google-services.json` and Firebase** | ✗ |
-| **Crashlytics build steps** | ✗ |
-| **Hilt** | ✗ (its Gradle plugin rewrites `@AndroidEntryPoint` base classes in bytecode, and apkforge has no such step) |
-| **Product flavors and flavor dimensions** | ✗ |
-| **Build-type source sets beyond debug/release** | ✗ (no `src/debug/`, no `debugImplementation`) |
-| Data binding, Navigation Safe Args, AIDL | ✗ |
-| Kotlin all-open and no-arg plugins | ✗ |
-| ABI and density splits | ✗ |
-| `packagingOptions` | ✗ (apkforge's resource merging rules are built in) |
-| Dynamic feature modules | ✗ |
-| `ndk-build` | ✗ (CMake only) |
-| Running unit tests, instrumented tests and lint | ✗ |
-| ECDSA signing keys | ✗ (RSA only) |
-| v3 key rotation | ✗ (v3 signing works, signing lineage doesn't) |
-| RenderScript | ✗ |
-| macOS and Windows | Not tested |
-
-`apkforge import-gradle` warns about unsupported features when it encounters them, with the file and line.
-
-What hasn't been tested against the real thing yet: `test-bundle --install` on a real device (only against a stand-in adb), and whether Google Play accepts a bundle signed by apkforge. apkforge is developed and tested on Linux.
-
----
-
-## Roadmap
-
-The unsupported features above are the roadmap, along with the items below. **Next** is what I'm working toward first, **Planned** is wanted but not scheduled, **Exploring** is under evaluation, and **Not planned** is left out on purpose (open an issue if you need it). There are no dates here on purpose.
-
-**Shipped in 1.3.0**, the first packaged release: `pip install apkforge` and `uvx`, the single-file `.pyz`, Android App Bundles (signed with an optional upload key, read back, checked against what Google Play objects to, and tried out as a universal APK), the Java runtime found or downloaded on a bare machine, and publishing to PyPI through Trusted Publishing.
-
-### Next: Firebase and Crashlytics
-
-- **`google-services.json` processing** for both APK and App Bundle, doing the step Google's Gradle plugin does: turning the file into string resources. A `"googleServices"` setting (`true`, `false` or `"auto"`) controls it.
-- **The same lookup order as Google's plugin:** `src/<buildType>/google-services.json`, then `src/`, then the module directory, using the `client` entry whose `package_name` matches the module's `applicationId`.
-- **Crashlytics mapping ID generation** for R8 builds, controlled by a `"crashlytics"` setting.
-- **`apkforge crashlytics-upload`**, which hands the R8 mapping to the Firebase CLI. It needs the Firebase CLI and a login, and apkforge never sees a credential. `--dry-run` prints the command.
-- **Testing the upload against the real Firebase service** before it ships.
-
-### Gradle parity
-
-Everything `import-gradle` reports as not mapped today.
-
-| Item | Notes | Status |
-|---|---|---|
-| Product flavors and flavor dimensions | The biggest blocker for larger migrations: every flavor-specific setting, source set and dependency is lost today | Planned |
-| Build-type source sets and configurations | `src/debug/`, `debugImplementation`, custom build types | Planned |
-| Hilt | Needs a bytecode step that rewrites `@AndroidEntryPoint` base classes (hilt-compiler itself already runs on KSP and KAPT) | Planned |
-| Navigation Safe Args, Data Binding, AIDL | Code generators apkforge doesn't have yet | Planned |
-| Kotlin all-open and no-arg plugins | | Planned |
-| ABI and density splits | | Planned |
-| `packagingOptions` | Configurable excludes and `pickFirst` | Planned |
-| Dynamic feature modules | | Exploring |
-| `ndk-build` | CMake is the only native build system today | Exploring |
-| Unit and instrumented tests | Tests aren't built by apkforge today | Exploring |
-
-### Signing and release
-
-| Item | Notes | Status |
-|---|---|---|
-| ECDSA signing keys | RSA only today | Planned |
-| APK Signature Scheme v3 key rotation | v3 signing exists, signing lineage doesn't | Planned |
-| KMS and HSM signing | Release keys that never touch the build machine | Planned |
-| Google Play upload from CI | Through the Play Publishing API | Exploring |
-
-### Supply chain and compliance
-
-| Item | Notes | Status |
-|---|---|---|
-| SLSA build provenance | Attestations for release builds | Planned |
-| CycloneDX SBOM | apkforge already resolves the full dependency graph | Planned |
-| Dependency lockfile and Maven checksum verification | | Planned |
-| Remote build cache | The action cache is content-addressed already, and this shares it between machines | Planned |
-| Audit log | Builds and signing operations | Exploring |
-
-### Developer experience
-
-| Item | Notes | Status |
-|---|---|---|
-| `apkforge watch` | Rebuild and reinstall on save | Planned |
-| VS Code extension | A JSON Schema for `apkforge.json`, with completion and validation | Planned |
-| CI output | GitHub Actions annotations and JUnit XML, on top of the JSON output that exists today | Planned |
-| Prebuilt container image and GitHub Action | The toolchain baked in for CI | Exploring |
-
-### Platforms
-
-| Item | Notes | Status |
-|---|---|---|
-| macOS, Windows and Linux arm64 | As tested build hosts. Today apkforge is developed and tested on Linux | Planned |
-
-### Not planned
-
-| Item | Notes | Status |
-|---|---|---|
-| RenderScript | Deprecated by Google. Open an issue if you depend on it | Not planned |
-| Compose Multiplatform | apkforge builds Android apps only | Not planned |
-
-Sponsors and company customers influence the order. If something is blocking you, tell me: [open an issue](https://github.com/invarq/apkforge/issues) or see [For companies](#for-companies) below.
+* **Byte-for-Byte Pure-Python `aapt2` & `d8` (`1.6.0`):** Clean-room Python compilers matching Google's official `aapt2` (`resources.arsc`, binary XML, 9-patch PNG crunching) and `d8` (`classes.dex`, Java 8+ desugaring, interface desugaring) outputs byte-for-byte. Zero C++ binaries, zero JVM invocation.
+* **Zero-SDK ARM64 & On-Device Builds (`1.6.0`):** Compile real Android apps straight on ARM64 Linux servers, Raspberry Pis, or Android phones (Termux/Pydroid) without hunting for architecture-locked SDK binaries or rooting anything.
+* **Dual-Engine Runtime Switching (`1.6.0`):** Flip between Pure-Python Mode (tiny RAM footprint, byte-for-byte parity) and Host Toolchain Mode right inside `apkforge.json`.
+* **Built-In Mock `android.jar` & Standalone Test Runners (`1.6.0`):** Pure-Python framework stub generation paired with native JUnit and instrumented test runners. Run unit tests fast without hauling gigabytes of platform JARs.
+* **Full Multi-Module Gradle Parity (`1.6.0`):** Product flavors and flavor dimensions, build-type source sets (`src/debug/`, `debugImplementation`), Hilt `@AndroidEntryPoint` bytecode rewriting, Navigation Safe Args, Data Binding, AIDL, `packagingOptions`, and ABI/density splits.
+* **Firebase & Google Services (`1.6.0`):** Native `google-services.json` resource generation (`src/<buildType>/`, `src/`, and module lookup order), Crashlytics R8 mapping ID generation, and `apkforge crashlytics-upload`.
+* **Zero-JDK Pure-Python `javac` (`1.7.0`, Dropping Next):** Compiles Java source straight to `.class` bytecode in pure Python. No JVM cold start, no 2 GB build images, just fast serverless builds.
+* **Security & Compliance:** KMS/HSM signing (keys never touch build machines), ECDSA keys, APK Signature Scheme v3 key rotation, SLSA build provenance, CycloneDX SBOMs, remote content-addressed build caching, Google Play Publishing API uploads, and signing audit logs.
 
 ---
 
 ## For companies
 
-apkforge is Apache-2.0, so you can use it commercially at no cost.
+**Community Edition (`1.3.x`)** is Apache-2.0 and free for commercial use.
 
-**Where the commercial offering begins:** Organizations that build release APKs or App Bundles in production have needs beyond what an open-source CLI covers today: signing keys managed in a KMS or HSM, SLSA build provenance, CycloneDX SBOMs, audit logs, and response-time SLAs. These are all on the roadmap. Organizations that fund specific features get them first, plus direct access to the maintainer and a case study arrangement.
+**Enterprise Engine (`1.6.0+`)** and engineering services are for teams building Android apps at scale, AI app-generation platforms burning cash on Gradle containers, and security-sensitive mobile teams:
 
-**What's available today:**
+* **Enterprise Licensing & `1.7.0` Early Access:** Commercial rights to the byte-for-byte pure-Python compiler suite (`1.6.0`), early access to zero-JDK `javac` (`1.7.0`), embedded cloud worker deployment, and enterprise compliance features (KMS/HSM signing, SLSA provenance, CycloneDX SBOMs, remote build cache).
+* **Priority Support:** Direct line for build failures and release blockers with an agreed response SLA.
+* **Migration & CI Setup:** Moving off Gradle with `import-gradle`, setting up air-gapped builds with `vendor`, and locking down reproducible CI pipelines.
+* **Sponsored Features:** Fund priority roadmap items or custom integrations on your own timeline.
+* **Android CI Audit:** Fixed-fee audit of your existing Android CI/CD setup (build times, caching, signing security, reproducibility), delivered as a written report with prioritized fixes.
 
-- **Priority support.** A direct line for build failures and release blockers, with a response time agreed up front.
-- **Migration and CI setup.** Moving a Gradle project over with `import-gradle`, setting up offline or air-gapped builds with `vendor`, and configuring a pinned, reproducible toolchain in your CI.
-- **Sponsored features.** Fund an item from the roadmap (Hilt, product flavors, ECDSA signing, remote build cache, build attestations, HSM signing integration) and have it built on a timeline you set.
-- **Android CI audit.** A one-time review of your existing Android CI/CD pipeline: build times, caching, signing configuration, and reproducibility. It's a fixed fee, and the deliverable is a written report with prioritized recommendations.
-
-If your team builds Android APKs or App Bundles and you're weighing whether apkforge fits your CI/CD pipeline, email [gnana.sagar.research@gmail.com](mailto:gnana.sagar.research@gmail.com) with a line about your project and what you need. I'm happy to do a free 30-minute call with anyone serious about evaluating it.
+Building Android APKs or App Bundles in production and want to license `1.6.0` / `1.7.0` or see if apkforge fits your stack? Email **[gnana.sagar.research@gmail.com](mailto:gnana.sagar.research@gmail.com)** with a couple lines about your setup. Happy to jump on a free 30-minute call if you're seriously evaluating it.
 
 ---
 
 ## Support the project
 
-apkforge is free and open source under Apache-2.0, built and maintained independently. If it saves your team time, sponsoring helps keep it maintained and pays for the roadmap above. Stars, bug reports, and telling a colleague help too.
+apkforge Community Edition (`1.3.x`) is free and open source under Apache-2.0, built and maintained independently. If it saves your team hours or server spend, sponsoring keeps it moving. Stars, bug reports, and telling a colleague help a ton too.
 
 **[Sponsor on GitHub](https://github.com/sponsors/invarq)** · monthly or one-time · card accepted.
 
@@ -514,13 +446,13 @@ Ethereum mainnet (ETH and ERC-20 tokens such as USDC and USDT):
 |:---:|:---:|
 | ![QR code for the Bitcoin Taproot address](https://raw.githubusercontent.com/invarq/apkforge/main/docs/assets/donate-btc-taproot.png) | ![QR code for the Ethereum address](https://raw.githubusercontent.com/invarq/apkforge/main/docs/assets/donate-eth.png) |
 
-Check the first and last few characters after you paste, and send only on the network named above.
+Double-check the first and last few characters after pasting, and send only on the network listed above.
 
 ---
 
 ## Contributing
 
-Bug reports, ideas, and pull requests are welcome. For a build problem, include the command you ran and the output of `apkforge doctor`. To work on apkforge itself, see [Development](#development) below.
+Bug reports, ideas, and pull requests are welcome. If you hit a build issue, drop the command you ran along with the output of `apkforge doctor`. To hack on apkforge itself, see [Development](#development).
 
 ---
 
@@ -530,7 +462,7 @@ Bug reports, ideas, and pull requests are welcome. For a build problem, include 
 python3 -m unittest discover -s tests    # 64 tests, under a minute with the toolchain installed
 ```
 
-Tests that build demo apps skip themselves until the toolchain is there: run `apkforge doctor --bundletool`, then build any app once so the API 36 `android.jar` is downloaded.
+Tests that build demo apps skip themselves until the toolchain is present: run `apkforge doctor --bundletool`, then build any app once so the API 36 `android.jar` is downloaded.
 
 ```bash
 python3 tools/build_pyz.py . dist/apkforge-1.3.0.pyz   # single-file build (carries LICENSE and NOTICE)
@@ -538,10 +470,10 @@ python3 -m pip install build && python3 -m build        # wheel and sdist into d
 tools/bare_env.sh setup fresh && tools/bare_env.sh run fresh python3 -m apkforge doctor   # test with no Java
 ```
 
-The version is written in `apkforge/util.py` (`VERSION`, and `BUILD` for a pre-release label) and in `pyproject.toml`; `tests/test_packaging.py` fails when the two differ.
+The version lives in `apkforge/util.py` (`VERSION`, plus `BUILD` for pre-release labels) and `pyproject.toml`; `tests/test_packaging.py` fails if they drift out of sync.
 
 ---
 
 ## License
 
-Apache License 2.0. See [LICENSE](https://github.com/invarq/apkforge/blob/main/LICENSE) and [NOTICE](https://github.com/invarq/apkforge/blob/main/NOTICE). Copyright 2026 Gnana Sagar.
+Community Edition (`1.3.x`) is licensed under the **Apache License 2.0**. See [LICENSE](https://github.com/invarq/apkforge/blob/main/LICENSE) and [NOTICE](https://github.com/invarq/apkforge/blob/main/NOTICE). Copyright 2026 Gnana Sagar.
